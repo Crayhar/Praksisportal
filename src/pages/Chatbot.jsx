@@ -7,10 +7,7 @@ export default function Chatbot_test() {
     const [loading, setLoading] = useState(false);
     const [llmModel, setLlmModel] = useState('google');
 
-    const llmConfig = {
-        google: { service: "google", model: "gemini-2.5-flash", apiKey: "" },
-        openai: { service: "openai", apiKey: "" },
-    };
+
 
     const handleSendMessage = async () => {
         if (!input.trim()) return;
