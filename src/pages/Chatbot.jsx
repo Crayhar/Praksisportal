@@ -9,7 +9,7 @@ export default function Chatbot_test() {
 
     const llmConfig = {
         google: { service: "google", model: "gemini-2.5-flash", apiKey: "" },
-        openai: { service: "openai", apiKey: "sk-proj---Js2Sn_0sND9lkQ6S-Vx2Q0TOuPWzJqtMCfo8A" },
+        openai: { service: "openai", apiKey: "" },
     };
 
     const handleSendMessage = async () => {
