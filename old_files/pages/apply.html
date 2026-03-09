@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Søk på praksisplass - Praksisportal</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="nav-logo">
+          <a href="../index.html">Praksisportal</a>
+        </div>
+        <ul class="nav-menu">
+          <li class="nav-item">
+            <a href="../index.html" class="nav-link">Hjem</a>
+          </li>
+          <li class="nav-item">
+            <a href="internships.html" class="nav-link">Praksisplasser</a>
+          </li>
+          <li class="nav-item">
+            <a href="apply.html" class="nav-link">Søk</a>
+          </li>
+          <li class="nav-item">
+            <a href="../index.html#contact" class="nav-link">Kontakt</a>
+          </li>
+        </ul>
+        <div class="hamburger">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="hero" style="min-height: 300px">
+        <div class="hero-content">
+        <h1>Søk på praksisplass</h1>
+        <p>Ta det første steget mot dine karrieremål</p>
+      </div>
+    </section>
+
+    <!-- Application Form -->
+    <section class="contact" style="padding: 60px 20px">
+      <div class="container" style="max-width: 600px">
+        <h2 style="text-align: center; margin-bottom: 2rem">Søknadsskjema for praksisplass</h2>
+        <form id="applicationForm">
+          <!-- Basic Information -->
+          <fieldset
+            style="
+              margin-bottom: 2rem;
+              padding: 1.5rem;
+              border: 1px solid #347e84;
+              border-radius: 8px;
+            "
+          >
+            <legend style="color: #347e84; font-weight: bold; padding: 0 10px">Personlig informasjon</legend>
+
+            <label
+              for="fullName"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >Fullt navn *</label
+            >
+            <input
+              type="text"
+              id="fullName"
+              name="fullName"
+              required
+              style="width: 100%; margin-bottom: 1rem"
+            />
+
+            <label
+              for="email"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >E-postadresse *</label
+            >
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              style="width: 100%; margin-bottom: 1rem"
+            />
+
+            <label
+              for="phone"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >Telefonnummer *</label
+            >
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              required
+              style="width: 100%; margin-bottom: 1rem"
+            />
+
+            <label
+              for="school"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >Universitet *</label
+            >
+            <input
+              type="text"
+              id="school"
+              name="school"
+              required
+              style="width: 100%"
+            />
+          </fieldset>
+
+          <!-- Application Details -->
+          <fieldset
+            style="
+              margin-bottom: 2rem;
+              padding: 1.5rem;
+              border: 1px solid #347e84;
+              border-radius: 8px;
+            "
+          >
+            <legend style="color: #347e84; font-weight: bold; padding: 0 10px">Søknadsdetaljer</legend>
+
+            <label
+              for="position"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >Stilling du søker på *</label
+            >
+            <select
+              id="position"
+              name="position"
+              required
+              style="
+                width: 100%;
+                padding: 12px 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                font-size: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <option value="">Velg en stilling...</option>
+              <option value="web-developer">Webutvikler - praksisplass</option>
+              <option value="ux-ui">UX/UI Design - praksisplass</option>
+              <option value="data-science">Data Science - praksisplass</option>
+              <option value="mobile-dev">Mobilutvikler - praksisplass</option>
+              <option value="marketing">Markedsføring - praksisplass</option>
+              <option value="backend">Backendutvikler - praksisplass</option>
+            </select>
+
+            <label
+              for="coverLetter"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >Søknadsbrev *</label
+            >
+            <textarea
+              id="coverLetter"
+              name="coverLetter"
+              placeholder="Fortell hvorfor du er interessert i denne praksisplassen og hva du kan bidra med..."
+              rows="6"
+              required
+              style="width: 100%; margin-bottom: 1rem"
+            ></textarea>
+
+            <label
+              for="experience"
+              style="
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #333;
+                font-weight: 500;
+              "
+              >Relevant erfaring</label
+            >
+            <textarea
+              id="experience"
+              name="experience"
+              placeholder="Describe your relevant skills, projects, or previous experience..."
+              rows="4"
+              style="width: 100%"
+            ></textarea>
+          </fieldset>
+
+          <!-- Additional Information -->
+          <fieldset
+            style="
+              margin-bottom: 2rem;
+              padding: 1.5rem;
+              border: 1px solid #347e84;
+              border-radius: 8px;
+            "
+          >
+            <legend style="color: #347e84; font-weight: bold; padding: 0 10px">Tilleggsinformasjon</legend>
+
+            <label style="display: block; margin-bottom: 1rem">
+              <input type="checkbox" name="availability" required style="margin-right: 0.5rem" />
+              <span>Jeg er tilgjengelig for å starte praksisplassen innen de neste 3 månedene *</span>
+            </label>
+
+            <label style="display: block; margin-bottom: 1rem">
+              <input type="checkbox" name="terms" required style="margin-right: 0.5rem" />
+              <span>Jeg godtar vilkår og betingelser *</span>
+            </label>
+          </fieldset>
+
+          <!-- Submit Button -->
+          <div style="text-align: center">
+            <button type="submit" class="btn btn-primary">Send søknad</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p>
+          &copy; 2026 Praksisportal. Alle rettigheter reservert. |
+          <a href="#">Personvern</a> | <a href="#">Vilkår</a>
+        </p>
+      </div>
+    </footer>
+
+    <script src="../js/script.js"></script>
+    <script>
+      const applicationForm = document.getElementById("applicationForm");
+
+      applicationForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        // Get form data
+        const fullName = document.getElementById("fullName").value;
+        const email = document.getElementById("email").value;
+        const position = document.getElementById("position").value;
+
+        // Validate
+        if (!fullName || !email || !position) {
+          alert("Vennligst fyll ut alle obligatoriske felt.");
+          return;
+        }
+
+        // Show success message
+        alert(
+          `Takk ${fullName}! Søknaden din er sendt.\n\nVi vil gjennomgå søknaden og kontakte deg på ${email} snart. Lykke til!`,
+        );
+
+        // Reset form
+        applicationForm.reset();
+
+        // Optionally redirect after delay
+        setTimeout(() => {
+          window.location.href = "../index.html";
+        }, 2000);
+      });
+    </script>
+  </body>
+</html>

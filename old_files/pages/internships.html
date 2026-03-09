@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alle praksisplasser - Praksisportal</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="nav-logo">
+          <a href="../index.html">Praksisportal</a>
+        </div>
+        <ul class="nav-menu">
+          <li class="nav-item">
+            <a href="../index.html" class="nav-link">Hjem</a>
+          </li>
+          <li class="nav-item">
+            <a href="internships.html" class="nav-link">Praksisplasser</a>
+          </li>
+          <li class="nav-item">
+            <a href="apply.html" class="nav-link">Søk</a>
+          </li>
+          <li class="nav-item">
+            <a href="../index.html#contact" class="nav-link">Kontakt</a>
+          </li>
+        </ul>
+        <div class="hamburger">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="hero" style="min-height: 300px">
+      <div class="hero-content">
+        <h1>Alle praksisplasser</h1>
+        <p>Finn den perfekte praksisplassen som matcher dine interesser og ferdigheter</p>
+      </div>
+    </section>
+
+    <!-- Internships List -->
+    <section class="latest-internships">
+      <div class="container">
+        <!-- Search and Filter -->
+        <div style="margin-bottom: 2rem">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Søk praksisplasser etter tittel, bedrift eller sted..."
+            style="
+              width: 100%;
+              padding: 12px 15px;
+              border: 1px solid #347e84;
+              border-radius: 5px;
+              font-size: 1rem;
+            "
+          />
+        </div>
+
+        <!-- Internship Cards -->
+        <div class="internship-list" id="allInternships">
+          <p>Laster praksisplasser...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p>
+          &copy; 2026 Praksisportal. Alle rettigheter reservert. |
+          <a href="#">Personvern</a> | <a href="#">Vilkår</a>
+        </p>
+      </div>
+    </footer>
+
+    <script src="../js/script.js"></script>
+    <script>
+      // Extended internship data
+      const allInternships = [
+        {
+          id: 1,
+          title: "Webutvikler - praksisplass",
+          company: "TechCorp AS",
+          location: "Oslo, Norge",
+          description:
+            "Jobb med spennende webprosjekter ved bruk av moderne teknologier som React og Node.js.",
+          duration: "6 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 2,
+          title: "UX/UI Design - praksisplass",
+          company: "DesignStudio",
+          location: "Bergen, Norge",
+          description:
+            "Lag vakre brukergrensesnitt og forbedre brukeropplevelser for mobil og nett.",
+          duration: "3 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 3,
+          title: "Data Science - praksisplass",
+          company: "DataInsights",
+          location: "Trondheim, Norge",
+          description:
+            "Analyser data og utvikle maskinlæringsmodeller for å løse reelle forretningsproblemer.",
+          duration: "6 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 4,
+          title: "Mobilutvikler - praksisplass",
+          company: "AppWorks",
+          location: "Oslo, Norge",
+          description:
+            "Utvikle iOS- og Android-apper ved bruk av Flutter og native teknologier.",
+          duration: "4 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 5,
+          title: "Markedsføring - praksisplass",
+          company: "BrandBoost",
+          location: "Stavanger, Norge",
+          description:
+            "Bistå med digitale markedsføringskampanjer, sosiale medier og innholdsproduksjon.",
+          duration: "3 måneder",
+          salary: "Ubetalt",
+        },
+        {
+          id: 6,
+          title: "Backendutvikler - praksisplass",
+          company: "CloudSystems",
+          location: "Bergen, Norge",
+          description:
+            "Bygg skalerbare serverapplikasjoner og API-er ved hjelp av Python og Java.",
+          duration: "6 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 7,
+          title: "DevOps - praksisplass",
+          company: "InfraFlow",
+          location: "Oslo, Norge",
+          description:
+            "Lær automatisering av infrastruktur, CI/CD og containerisering med Docker og Kubernetes.",
+          duration: "6 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 8,
+          title: "QA / Test - praksisplass",
+          company: "QualityWorks",
+          location: "Bergen, Norge",
+          description:
+            "Implementer teststrategier, skriv automatiserte tester og bidra til høy kvalitet i leveransene.",
+          duration: "4 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 9,
+          title: "Grafisk designer - praksisplass",
+          company: "CreativeCo",
+          location: "Stavanger, Norge",
+          description:
+            "Design markedsføringsmateriell, UI-ressurser og visuell kommunikasjon for kunder.",
+          duration: "3 måneder",
+          salary: "Ubetalt",
+        },
+        {
+          id: 10,
+          title: "IT-support - praksisplass",
+          company: "HelpDesk AS",
+          location: "Trondheim, Norge",
+          description:
+            "Gi brukerstøtte, feilsøk maskinvare og programvare, og lær kundebehandling i praksis.",
+          duration: "3 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 11,
+          title: "Prosjektlederassistent - praksisplass",
+          company: "ProjectHub",
+          location: "Oslo, Norge",
+          description:
+            "Bistå prosjektledere med planlegging, koordinering og oppfølging av leveranser.",
+          duration: "6 måneder",
+          salary: "Lønnet",
+        },
+        {
+          id: 12,
+          title: "Cloud Engineer - praksisplass",
+          company: "SkyTech",
+          location: "Bergen, Norge",
+          description:
+            "Arbeid med skyplattform-løsninger, distribusjon og overvåkning i AWS eller Azure.",
+          duration: "6 måneder",
+          salary: "Lønnet",
+        },
+      ];
+
+      // Load internships on page load
+      function loadAllInternships(internships = allInternships) {
+        const container = document.getElementById("allInternships");
+
+        if (internships.length === 0) {
+          container.innerHTML =
+            '<p style="grid-column: 1 / -1; text-align: center;">Ingen praksisplasser funnet. Prøv å endre søket ditt.</p>';
+          return;
+        }
+
+        container.innerHTML = internships
+          .map(
+            (internship) => `
+                <div class="internship-card">
+                    <h3>${internship.title}</h3>
+                    <p class="company">🏢 ${internship.company}</p>
+                    <p class="location">📍 ${internship.location}</p>
+                    <p>${internship.description}</p>
+                    <p style="color: #347e84; font-size: 0.9rem; margin: 0.5rem 0;"><strong>Varighet:</strong> ${internship.duration}</p>
+                    <p style="color: #347e84; font-size: 0.9rem; margin: 0.5rem 0;"><strong>Status:</strong> ${internship.salary}</p>
+                    <a href="apply.html" class="btn btn-primary" style="font-size: 0.9rem; padding: 8px 20px;">Søk nå</a>
+                </div>
+            `,
+          )
+          .join("");
+      }
+
+      // Search functionality
+      const searchInput = document.getElementById("searchInput");
+      searchInput.addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = allInternships.filter(
+          (internship) =>
+            internship.title.toLowerCase().includes(query) ||
+            internship.company.toLowerCase().includes(query) ||
+            internship.location.toLowerCase().includes(query),
+        );
+        loadAllInternships(filtered);
+      });
+
+      // Load on page load
+      document.addEventListener("DOMContentLoaded", () => {
+        loadAllInternships();
+      });
+    </script>
+  </body>
+</html>
