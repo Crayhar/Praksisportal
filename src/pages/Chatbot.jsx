@@ -8,8 +8,8 @@ export default function Chatbot_test() {
     const [llmModel, setLlmModel] = useState('google');
 
     const llmConfig = {
-        google: { service: "google", model: "gemini-2.5-flash", apiKey: "AIzaSyCm8qfp0MnGI0A2DO3idNwjBlmBJIKqqYk" },
-        openai: { service: "openai", apiKey: "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" },
+        google: { service: "google", model: "gemini-2.5-flash", apiKey: "" },
+        openai: { service: "openai", apiKey: "sk-proj---Js2Sn_0sND9lkQ6S-Vx2Q0TOuPWzJqtMCfo8A" },
     };
 
     const handleSendMessage = async () => {
