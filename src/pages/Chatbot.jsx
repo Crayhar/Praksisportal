@@ -1,25 +1,54 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LLM from "@themaximalist/llm.js"
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 export default function Chatbot_test() {
+    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const messagesEndRef = useRef(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [llmModel, setLlmModel] = useState('google');
 
     const llmConfig = {
-        google: { service: "google", model: "gemini-2.5-flash", apiKey: "AIzaSyCm8qfp0MnGI0A2DO3idNwjBlmBJIKqqYk" },
+        google: { service: "google", model: "gemini-2.5-flash", apiKey: geminiApiKey },
         openai: { service: "openai", apiKey: "" },
+    };
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const updateAssistantMessage = (messageId, content, isStreaming) => {
+        setMessages((prev) =>
+            prev.map((message) =>
+                message.id === messageId ? { ...message, content, isStreaming } : message
+            )
+        );
     };
 
     const handleSendMessage = async () => {
         if (!input.trim()) return;
+        if (llmModel === 'google' && !geminiApiKey) {
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: crypto.randomUUID(),
+                    role: 'Datamaskinen',
+                    content: 'Error: Missing VITE_GEMINI_API_KEY environment variable.',
+                    isStreaming: false,
+                },
+            ]);
+            return;
+        }
 
-        const userMessage = { role: 'Bruker', content: input };
-        setMessages((prev) => [...prev, userMessage]);
         const prompt = input;
+        const userMessage = { id: crypto.randomUUID(), role: 'Bruker', content: prompt, isStreaming: false };
+        const assistantMessageId = crypto.randomUUID();
+        const assistantMessage = { id: assistantMessageId, role: 'Datamaskinen', content: '', isStreaming: true };
+
+        setMessages((prev) => [...prev, userMessage, assistantMessage]);
         setInput('');
         setLoading(true);
 
@@ -35,46 +64,37 @@ export default function Chatbot_test() {
             let content = '';
 
             if (response?.stream) {
-                setMessages((prev) => [...prev, { role: 'Datamaskinen', content: '' }]);
-
                 for await (const chunk of response.stream) {
                     if (chunk.type !== 'content' || !chunk.content) {
                         continue;
                     }
 
                     content += chunk.content;
-                    setMessages((prev) => {
-                        const next = [...prev];
-                        next[next.length - 1] = { role: 'Datamaskinen', content };
-                        return next;
-                    });
+                    updateAssistantMessage(assistantMessageId, content, true);
                 }
 
                 const completeResponse = await response.complete();
                 console.log('Completed LLM.js response object:', completeResponse);
             } else if (response && typeof response[Symbol.asyncIterator] === 'function') {
-                setMessages((prev) => [...prev, { role: 'Datamaskinen', content: '' }]);
-
                 for await (const chunk of response) {
                     if (!chunk) {
                         continue;
                     }
 
                     content += chunk;
-                    setMessages((prev) => {
-                        const next = [...prev];
-                        next[next.length - 1] = { role: 'Datamaskinen', content };
-                        return next;
-                    });
+                    updateAssistantMessage(assistantMessageId, content, true);
                 }
             } else {
                 console.log('Raw LLM.js response object:', response);
                 content = typeof response === 'string' ? response : response?.content ?? '';
-                setMessages((prev) => [...prev, { role: 'Datamaskinen', content }]);
+                updateAssistantMessage(assistantMessageId, content, false);
+                return;
             }
+
+            updateAssistantMessage(assistantMessageId, content, false);
         } catch (error) {
             console.error('ListModels', error);
-            setMessages((prev) => [...prev, { role: 'Datamaskinen', content: 'Error: Failed to get response' }]);
+            updateAssistantMessage(assistantMessageId, 'Error: Failed to get response', false);
         } finally {
             setLoading(false);
         }
@@ -82,6 +102,14 @@ export default function Chatbot_test() {
 
     return (
         <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
+            <style>
+                {`
+                    @keyframes chatbot-cursor-blink {
+                        0%, 49% { opacity: 1; }
+                        50%, 100% { opacity: 0; }
+                    }
+                `}
+            </style>
             <h1>Chatbot Test</h1>
 
             <div style={{ marginBottom: '15px' }}>
@@ -93,8 +121,8 @@ export default function Chatbot_test() {
             </div>
 
             <div style={{ border: '1px solid #ccc', height: '400px', overflowY: 'auto', padding: '10px', marginBottom: '15px' }}>
-                {messages.map((msg, i) => (
-                    <div key={i} style={{ marginBottom: '10px', textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+                {messages.map((msg) => (
+                    <div key={msg.id} style={{ marginBottom: '10px', textAlign: msg.role === 'Bruker' ? 'right' : 'left' }}>
                         <strong>{msg.role}:</strong>{' '}
                         {msg.role === 'Datamaskinen' ? (
                             <div
@@ -128,12 +156,23 @@ export default function Chatbot_test() {
                                 >
                                     {msg.content}
                                 </ReactMarkdown>
+                                {msg.isStreaming ? (
+                                    <span
+                                        aria-hidden="true"
+                                        style={{
+                                            animation: 'chatbot-cursor-blink 1s step-start infinite',
+                                        }}
+                                    >
+                                        ▍
+                                    </span>
+                                ) : null}
                             </div>
                         ) : (
                             <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
                         )}
                     </div>
                 ))}
+                <div ref={messagesEndRef} />
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
