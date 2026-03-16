@@ -71,6 +71,14 @@ body {
   opacity: 0.8;
 }
 
+.nav-role-indicator .nav-link {
+  opacity: 0.9;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+}
+
 .hamburger {
   display: none;
   flex-direction: column;
@@ -107,6 +115,29 @@ body {
   font-size: 1.5rem;
   margin-bottom: 2rem;
   opacity: 0.9;
+}
+
+.mock-auth-panel {
+  margin: 0 auto 1.5rem;
+  max-width: 840px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+.mock-auth-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.9rem;
+}
+
+.mock-auth-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* ===== Buttons ===== */
@@ -222,6 +253,15 @@ body {
   box-shadow: 0 5px 15px rgba(52, 126, 132, 0.2);
 }
 
+.internship-card-clickable {
+  cursor: pointer;
+}
+
+.internship-card-clickable:focus-visible {
+  outline: 3px solid rgba(52, 126, 132, 0.35);
+  outline-offset: 4px;
+}
+
 .internship-card h3 {
   color: var(--primary-color);
   margin-bottom: 0.5rem;
@@ -247,6 +287,91 @@ body {
 
 .center-btn {
   text-align: center;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 26, 28, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 2000;
+}
+
+.modal-card {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--white);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.24);
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  background: #e7f3f4;
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.modal-eyebrow {
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.modal-card h2 {
+  color: var(--primary-color);
+  margin-bottom: 0.75rem;
+}
+
+.modal-company,
+.modal-location {
+  color: var(--text-light);
+  margin-bottom: 0.45rem;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr;
+  gap: 16px;
+  margin: 22px 0;
+}
+
+.modal-panel {
+  background: var(--secondary-color);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.modal-panel h3 {
+  color: var(--primary-color);
+  margin-bottom: 0.75rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.profile-section small {
+  color: var(--text-light);
 }
 
 /* ===== CTA Section ===== */
@@ -685,6 +810,10 @@ input[type="checkbox"] {
   }
 
   .contact-content {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-grid {
     grid-template-columns: 1fr;
   }
 

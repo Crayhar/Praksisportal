@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function Navigation() {
+export default function Navigation({ userRole }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -11,6 +11,13 @@ export default function Navigation() {
   const closeMenu = () => {
     setMenuOpen(false);
   };
+
+  const roleLabel =
+    userRole === 'student'
+      ? 'Studentvisning'
+      : userRole === 'company'
+        ? 'Bedriftsvisning'
+        : 'Ingen testrolle valgt';
 
   return (
     <nav className="navbar">
@@ -26,13 +33,25 @@ export default function Navigation() {
             <Link to="/internships" className="nav-link" onClick={closeMenu}>Praksisplasser</Link>
           </li>
           <li className="nav-item">
-            <Link to="/apply" className="nav-link" onClick={closeMenu}>Søk</Link>
+            <Link to="/apply" className="nav-link" onClick={closeMenu}>
+              {userRole === 'company' ? 'Publiser' : 'Søk'}
+            </Link>
           </li>
           <li className="nav-item">
-            <Link to="/profile" className="nav-link" onClick={closeMenu}>Min profil</Link>
+            <Link to="/profile" className="nav-link" onClick={closeMenu}>
+              {userRole === 'company' ? 'Bedriftsside' : 'Min profil'}
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link to="/Chatbot_test" className="nav-link" onClick={closeMenu}>
+              {userRole === 'company' ? 'AI-annonse' : 'AI-verktøy'}
+            </Link>
           </li>
           <li className="nav-item">
             <a href="#contact" className="nav-link" onClick={closeMenu}>Kontakt</a>
+          </li>
+          <li className="nav-item nav-role-indicator">
+            <span className="nav-link">{roleLabel}</span>
           </li>
         </ul>
         <div
