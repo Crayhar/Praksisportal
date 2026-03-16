@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 export default function Chatbot_test() {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,6 +20,13 @@ export default function Chatbot_test() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    useEffect(() => {
+        if (!inputRef.current) return;
+
+        inputRef.current.style.height = '0px';
+        inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 160)}px`;
+    }, [input]);
 
     const updateAssistantMessage = (messageId, content, isStreaming) => {
         setMessages((prev) =>
@@ -120,7 +128,7 @@ export default function Chatbot_test() {
                 </select>
             </div>
 
-            <div style={{ border: '1px solid #ccc', height: '400px', overflowY: 'auto', padding: '10px', marginBottom: '15px' }}>
+            <div style={{ border: '1px solid #ccc', borderRadius: '20px', height: '400px', overflowY: 'auto', padding: '14px', marginBottom: '15px' }}>
                 {messages.map((msg) => (
                     <div key={msg.id} style={{ marginBottom: '10px', textAlign: msg.role === 'Bruker' ? 'right' : 'left' }}>
                         <strong>{msg.role}:</strong>{' '}
@@ -176,16 +184,35 @@ export default function Chatbot_test() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-                <input
-                    type="text"
+                <textarea
+                    ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                        }
+                    }}
                     placeholder="Type message..."
                     disabled={loading}
-                    style={{ flex: 1, padding: '8px' }}
+                    rows={1}
+                    style={{
+                        flex: 1,
+                        padding: '8px',
+                        minHeight: '38px',
+                        maxHeight: '160px',
+                        resize: 'none',
+                        overflowY: 'auto',
+                        lineHeight: 1.4,
+                        font: 'inherit',
+                    }}
                 />
-                <button onClick={handleSendMessage} disabled={loading}>
+                <button
+                    onClick={handleSendMessage}
+                    disabled={loading}
+                    style={{ borderRadius: '10px', padding: '5px' }}
+                >
                     {loading ? 'Sending...' : 'Send'}
                 </button>
             </div>
