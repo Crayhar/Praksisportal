@@ -4,8 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 const initialForm = {
-    jobTitle: '',
+    taskFocus: '',
     description: '',
+    website: '',
     location: '',
     startDate: '',
     endDate: '',
@@ -32,8 +33,8 @@ function formatDate(dateString) {
 function buildPrompt(form) {
     const salaryText =
         form.salaryType === 'hourly'
-            ? `Lonn: Timelønn pa ${form.compensationAmount} NOK per time.`
-            : `Lonn: Fastpris pa ${form.compensationAmount} NOK.`;
+            ? `Lønn: Timelønn pa ${form.compensationAmount} NOK per time.`
+            : `Lønn: Fastpris pa ${form.compensationAmount} NOK.`;
 
     const internshipCreditsText = form.internshipCredits
         ? 'Oppdraget er relevant for praksispoeng eller studiepoeng, og dette skal nevnes naturlig i annonsen.'
@@ -44,8 +45,9 @@ Skriv en profesjonell og tydelig rekrutteringsannonse pa norsk for en bedrift.
 Annonsen skal vaere klar for publisering og bruke et formelt, men inviterende sprak.
 
 Bruk denne informasjonen:
-- Stillingstittel: ${form.jobTitle}
+- Hovedfokus: ${form.taskFocus}
 - Beskrivelse: ${form.description}
+- Nettside: ${form.website}
 - Sted: ${form.location}
 - Oppstartsdato: ${formatDate(form.startDate)}
 - Sluttdato: ${formatDate(form.endDate)}
@@ -54,13 +56,19 @@ Bruk denne informasjonen:
 - Ønskede ferdigheter: ${form.skills.join(', ')}
 - ${internshipCreditsText}
 
+Les gjennom nettsiden som bedriften legger inn for a forstå bedriftens virksomhet, verdier og tone. Integrer relevant informasjon fra nettsiden naturlig i annonsen for a gi et helhetlig bilde av bedriften.
+
+Let gjennom HIOF.no og finn passende bachelor- og masterprogrammer som kan matche oppdraget, og inkluder relevante studieretninger i annonsen.
+
 Strukturer svaret med disse delene:
-1. Kort ingress
-2. Om rollen eller oppdraget
-3. Arbeidsoppgaver
-4. Ønskede kvalifikasjoner
-5. Praktisk informasjon
-6. Kort avslutning med oppfordring til a soke
+1. Relevant Tittel som reflekterer hovedfokuset
+2. Kort ingress
+3. Om rollen eller oppdraget
+4. Relevante studieretninger for kandidater
+5. Arbeidsoppgaver
+6. Ønskede kvalifikasjoner (Mål disse mot bachelor- og masterstudenter ved HIOF basert på informasjonen i beskrivelsen)
+7. Praktisk informasjon
+8. Kort avslutning med oppfordring til a søke
 
 Hvis informasjon mangler utover feltene over, skriv ikke antakelser som ser ut som fakta.
 `.trim();
@@ -69,13 +77,13 @@ Hvis informasjon mangler utover feltene over, skriv ikke antakelser som ser ut s
 function validateForm(form) {
     const nextErrors = {};
 
-    if (!form.jobTitle.trim()) nextErrors.jobTitle = 'Stillingstittel er påkrevd.';
+    if (!form.taskFocus.trim()) nextErrors.taskFocus = 'Hovedfokus er påkrevd.';
     if (!form.description.trim()) nextErrors.description = 'Beskrivelse er påkrevd.';
     if (!form.location.trim()) nextErrors.location = 'Sted er påkrevd.';
     if (!form.startDate) nextErrors.startDate = 'Oppstartsdato er påkrevd.';
     if (!form.endDate) nextErrors.endDate = 'Sluttdato er påkrevd.';
     if (!form.maxHours) nextErrors.maxHours = 'Maks antall timer er påkrevd.';
-    if (!form.salaryType) nextErrors.salaryType = 'Lonnstype er påkrevd.';
+    if (!form.salaryType) nextErrors.salaryType = 'Lønnstype er påkrevd.';
     if ((form.salaryType === 'hourly' || form.salaryType === 'fixed') && !form.compensationAmount.trim()) {
         nextErrors.compensationAmount =
             form.salaryType === 'hourly'
@@ -243,7 +251,7 @@ export default function Chatbot({ userRole }) {
                 : `Fastpris: ${form.compensationAmount} NOK`;
 
         const summary = [
-            `Stillingstittel: ${form.jobTitle}`,
+            `Hovedfokus: ${form.taskFocus}`,
             `Beskrivelse: ${form.description}`,
             `Sted: ${form.location}`,
             `Oppstartsdato: ${formatDate(form.startDate)}`,
@@ -435,14 +443,14 @@ export default function Chatbot({ userRole }) {
                         <h2 style={{ marginBottom: '14px', color: '#123033' }}>Del 1: Grunninformasjon</h2>
                         <div className="ad-field-grid">
                             <label>
-                                <span style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Stillingstittel *</span>
+                                <span style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Hovedfokus *</span>
                                 <input
                                     className="ad-input"
-                                    value={form.jobTitle}
-                                    onChange={(event) => updateField('jobTitle', event.target.value)}
+                                    value={form.taskFocus}
+                                    onChange={(event) => updateField('taskFocus', event.target.value)}
                                     placeholder="For eksempel Frontend-utvikler"
                                 />
-                                {errors.jobTitle ? <p style={{ color: '#b42318', marginTop: '6px' }}>{errors.jobTitle}</p> : null}
+                                {errors.taskFocus ? <p style={{ color: '#b42318', marginTop: '6px' }}>{errors.taskFocus}</p> : null}
                             </label>
 
                             <label>
@@ -454,6 +462,17 @@ export default function Chatbot({ userRole }) {
                                     placeholder="For eksempel Oslo"
                                 />
                                 {errors.location ? <p style={{ color: '#b42318', marginTop: '6px' }}>{errors.location}</p> : null}
+                            </label>
+
+                            <label>
+                                <span style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Nettside *</span>
+                                <input
+                                    className="ad-input"
+                                    value={form.website}
+                                    onChange={(event) => updateField('website', event.target.value)}
+                                    placeholder="For eksempel https://www.hiof.no"
+                                />
+                                {errors.website ? <p style={{ color: '#b42318', marginTop: '6px' }}>{errors.website}</p> : null}
                             </label>
 
                             <label className="ad-field-full">

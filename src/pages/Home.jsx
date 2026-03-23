@@ -27,7 +27,7 @@ export default function Home({ userRole, setUserRole }) {
   const isCompany = userRole === 'company';
   const getCompensationSummary = (internship) =>
     internship.salaryType === 'hourly'
-      ? `Timelonn: ${internship.compensationAmount} NOK/time`
+      ? `Timelønn: ${internship.compensationAmount} NOK/time`
       : `Fastpris: ${internship.compensationAmount} NOK`;
 
   return (
