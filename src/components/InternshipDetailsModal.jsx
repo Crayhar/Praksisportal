@@ -6,9 +6,10 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
   }
 
   const isCompany = userRole === 'company';
+  const isStudent = userRole === 'student';
   const compensationLabel =
     internship.salaryType === 'hourly'
-      ? `Timelonn: ${internship.compensationAmount} NOK per time`
+      ? `Timelønn: ${internship.compensationAmount} NOK per time`
       : `Fastpris: ${internship.compensationAmount} NOK`;
 
   return (
@@ -25,6 +26,22 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
         </button>
 
         <p className="modal-eyebrow">{isCompany ? 'Oppdragsdetaljer' : 'Stillingsdetaljer'}</p>
+        {isStudent && internship.matchSummary ? (
+          <div className="match-summary match-summary-modal">
+            <div className="match-summary-copy">
+              <p className="match-summary-kicker">Din match med annonsen</p>
+              <p className="match-summary-title">
+                Beste treff: {internship.matchSummary.rankedSkillMatches[0]?.name || internship.matchSummary.topQualification}
+              </p>
+            </div>
+            <div className="match-score match-score-lg">
+              <div className="match-score-inner">
+                <strong className="match-score-value match-score-value-md">{internship.matchSummary.totalScore}%</strong>
+                <span className="match-score-caption">match</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <h2 id="internship-modal-title">{internship.title}</h2>
         <p className="modal-company">🏢 {internship.company}</p>
         <p className="modal-location">📍 {internship.location}</p>
@@ -47,11 +64,26 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
         </div>
 
         <div className="modal-panel">
-          <h3>Onskede ferdigheter</h3>
+          <h3>Ønskede ferdigheter</h3>
           <p>{internship.skills.join(', ')}</p>
           <p>
             <strong>Relevant for praksispoeng:</strong> {internship.internshipCredits ? 'Ja' : 'Nei'}
           </p>
+          {internship.classification?.type ? (
+            <p>
+              <strong>Sakstype:</strong> {internship.classification.type}
+            </p>
+          ) : null}
+          {isStudent && internship.matchSummary ? (
+            <>
+              <p>
+                <strong>Matchscore:</strong> {internship.matchSummary.totalScore}%
+              </p>
+              <p>
+                <strong>Viktigste treff:</strong> {internship.matchSummary.topQualification}
+              </p>
+            </>
+          ) : null}
         </div>
 
         <div className="modal-panel">
@@ -64,7 +96,11 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
         </div>
 
         <div className="modal-actions">
-          <Link to={isCompany ? '/Chatbot_test' : '/apply'} className="btn btn-primary" onClick={onClose}>
+          <Link
+            to={isCompany ? '/Chatbot_test' : `/apply?selected=${internship.id}`}
+            className="btn btn-primary"
+            onClick={onClose}
+          >
             {isCompany ? 'Lag lignende annonse' : 'Søk på annonsen'}
           </Link>
           <button type="button" className="btn btn-secondary" onClick={onClose}>

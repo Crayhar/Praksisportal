@@ -1,12 +1,66 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { internships } from '../data/internships';
 import Footer from '../components/Footer';
 import InternshipDetailsModal from '../components/InternshipDetailsModal';
+import { STORAGE_KEYS, defaultPublishedCases, defaultStudentProfile } from '../data/portalData';
+import { scoreCaseAgainstStudent } from '../utils/caseMatching';
+import { loadStoredJson } from '../utils/storage';
+
+function mapPublishedCaseToInternship(item) {
+  return {
+    id: item.id,
+    title: item.title,
+    company: item.logo || 'Bedrift',
+    location: item.location,
+    description: item.taskDescription,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    maxHours: item.maxHours,
+    salaryType: item.salaryType,
+    compensationAmount: item.compensationAmount,
+    skills: item.professionalQualifications
+      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [],
+    internshipCredits: true,
+    classification: item.classification,
+    professionalQualifications: item.professionalQualifications || '',
+    personalQualifications: item.personalQualifications || '',
+    assignmentContext: item.assignmentContext || item.taskDescription,
+    deliveries: item.deliveries || '',
+    expectations: item.expectations || '',
+  };
+}
+
+function mapInternshipToCaseLike(internship) {
+  return {
+    title: internship.title,
+    taskFocus: internship.title,
+    assignmentContext: internship.assignmentContext || internship.description,
+    taskDescription: internship.description,
+    deliveries: internship.deliveries || '',
+    expectations: internship.expectations || '',
+    professionalQualifications: internship.professionalQualifications || internship.skills.join(', '),
+    personalQualifications: internship.personalQualifications || '',
+    startDate: internship.startDate,
+    endDate: internship.endDate,
+    maxHours: internship.maxHours,
+    location: internship.location,
+    technicalTerms: internship.skills.join(', '),
+  };
+}
 
 export default function Home({ userRole, setUserRole }) {
   const contactFormRef = useRef(null);
   const [selectedInternship, setSelectedInternship] = useState(null);
+  const studentProfile = useMemo(
+    () => loadStoredJson(STORAGE_KEYS.studentProfile, defaultStudentProfile),
+    []
+  );
+  const publishedCases = useMemo(
+    () => loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases).map(mapPublishedCaseToInternship),
+    []
+  );
 
   const handleContactSubmit = (e) => {
     e.preventDefault();
@@ -22,9 +76,9 @@ export default function Home({ userRole, setUserRole }) {
     }
   };
 
-  const latestInternships = internships.slice(0, 3);
-  const isStudent = userRole === 'student';
+  const latestInternships = [...publishedCases, ...internships].slice(0, 3);
   const isCompany = userRole === 'company';
+  const isStudent = userRole === 'student';
   const getCompensationSummary = (internship) =>
     internship.salaryType === 'hourly'
       ? `Timelønn: ${internship.compensationAmount} NOK/time`
@@ -104,36 +158,74 @@ export default function Home({ userRole, setUserRole }) {
       <section className="latest-internships">
         <div className="container">
           <h2>{isCompany ? 'Eksempler på aktive oppdrag' : 'Siste praksisplasser'}</h2>
-          <div className="internship-list">
-            {latestInternships.map((internship) => (
-              <div
-                key={internship.id}
-                className="internship-card internship-card-clickable"
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedInternship(internship)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    setSelectedInternship(internship);
-                  }
-                }}
-              >
-                <h3>{internship.title}</h3>
-                <p className="company">🏢 {internship.company}</p>
-                <p className="location">📍 {internship.location}</p>
-                <p>{internship.description}</p>
-                <p style={{ color: '#347e84', fontSize: '0.9rem', margin: '0.5rem 0' }}>
-                  <strong>Periode:</strong> {internship.startDate} til {internship.endDate}
-                </p>
-                <p style={{ color: '#347e84', fontSize: '0.9rem', margin: '0.5rem 0' }}>
-                  <strong>Kompensasjon:</strong> {getCompensationSummary(internship)}
-                </p>
-                <button type="button" className="btn btn-primary" style={{ fontSize: '0.9rem', padding: '8px 20px' }}>
-                  Se mer info
-                </button>
+          {isStudent ? (
+            <div className="student-insight-grid">
+              <div className="feature-card text-left">
+                <h3>Profilmatch</h3>
+                <p>Ferdigheter oppdateres fra profilsiden og brukes direkte i praksismatchingen.</p>
               </div>
-            ))}
+              <div className="feature-card text-left">
+                <h3>{studentProfile.skills.length} rangerte ferdigheter</h3>
+                <p>Toppskill: {studentProfile.skills.slice().sort((a, b) => b.level - a.level)[0]?.name || 'Ikke satt'}</p>
+              </div>
+              <div className="feature-card text-left">
+                <h3>{studentProfile.notificationThreshold}% varslingsterskel</h3>
+                <p>Endres direkte fra profilsiden.</p>
+              </div>
+            </div>
+          ) : null}
+          <div className="internship-list">
+            {latestInternships.map((internship) => {
+              const matchSummary = isStudent
+                ? scoreCaseAgainstStudent(mapInternshipToCaseLike(internship), studentProfile)
+                : null;
+
+              return (
+                <div
+                  key={internship.id}
+                  className="internship-card internship-card-clickable"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedInternship(matchSummary ? { ...internship, matchSummary } : internship)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setSelectedInternship(matchSummary ? { ...internship, matchSummary } : internship);
+                    }
+                  }}
+                >
+                  {matchSummary ? (
+                    <div className="match-summary">
+                      <div className="match-summary-copy">
+                        <p className="match-summary-kicker">Din match</p>
+                        <p className="match-summary-title">
+                          {matchSummary.rankedSkillMatches[0]?.name || matchSummary.topQualification}
+                        </p>
+                      </div>
+                      <div className="match-score match-score-sm">
+                        <div className="match-score-inner">
+                          <strong className="match-score-value match-score-value-sm">{matchSummary.totalScore}%</strong>
+                          <span className="match-score-caption match-score-caption-sm">match</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  <h3>{internship.title}</h3>
+                  <p className="company">🏢 {internship.company}</p>
+                  <p className="location">📍 {internship.location}</p>
+                  <p>{internship.description}</p>
+                  <p className="internship-meta">
+                    <strong>Periode:</strong> {internship.startDate} til {internship.endDate}
+                  </p>
+                  <p className="internship-meta">
+                    <strong>Kompensasjon:</strong> {getCompensationSummary(internship)}
+                  </p>
+                  <button type="button" className="btn btn-primary btn-inline-small">
+                    Se mer info
+                  </button>
+                </div>
+              );
+            })}
           </div>
           <div className="center-btn">
             <Link to="/internships" className="btn btn-secondary">
@@ -173,12 +265,12 @@ export default function Home({ userRole, setUserRole }) {
               <h3>Ta kontakt</h3>
               <p><strong>E-post:</strong> info@praksisportal.com</p>
               <p><strong>Telefon:</strong> +47 123 45 678</p>
-              <p><strong>Adresse:</strong> School Street 1, 0000 City, Norge</p>
+              <p><strong>Adresse:</strong>  B R A Veien 4, 1757 Halden, Norge</p>
             </div>
             <form className="contact-form" onSubmit={handleContactSubmit} ref={contactFormRef}>
               <input type="text" placeholder="Ditt navn" required />
               <input type="email" placeholder="Din e-post" required />
-              <textarea placeholder="Din melding" rows="5" style={{ resize: 'none' }} required></textarea>
+              <textarea className="contact-textarea" placeholder="Din melding" rows="5" required></textarea>
               <button type="submit" className="btn btn-primary">Send melding</button>
             </form>
           </div>

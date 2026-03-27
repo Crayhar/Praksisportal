@@ -1,73 +1,248 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
+import {
+  STORAGE_KEYS,
+  defaultCompanyProfile,
+  defaultDrafts,
+  defaultPublishedCases,
+  defaultStudentProfile,
+} from '../data/portalData';
+import { scoreCaseAgainstStudent } from '../utils/caseMatching';
+import { loadStoredJson, saveStoredJson } from '../utils/storage';
+
+function formatDate(dateString) {
+  if (!dateString) {
+    return 'Ikke satt';
+  }
+
+  return new Intl.DateTimeFormat('nb-NO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(dateString));
+}
+
+function ChipList({ items }) {
+  return (
+    <div className="chip-list">
+      {items.map((item) => (
+        <span key={item} className="chip">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TagEditor({ label, items, onAdd, onRemove, placeholder }) {
+  const [value, setValue] = useState('');
+
+  return (
+    <div className="tag-editor">
+      <p className="tag-editor-label"><strong>{label}</strong></p>
+      <div className="tag-editor-input-row">
+        <input
+          className="tag-editor-input"
+          type="text"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          className="btn btn-secondary btn-small"
+          onClick={() => {
+            const trimmed = value.trim();
+            if (!trimmed) return;
+            onAdd(trimmed);
+            setValue('');
+          }}
+        >
+          Legg til
+        </button>
+      </div>
+      <div className="tag-editor-list">
+        {items.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onRemove(item)}
+            className="tag-editor-chip"
+          >
+            {item} ×
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SkillEditor({ skills, onAdd, onRemove, onLevelChange }) {
+  const [name, setName] = useState('');
+  const [level, setLevel] = useState(3);
+
+  return (
+    <div className="skill-editor">
+      <p className="tag-editor-label"><strong>Ferdigheter og nivå</strong></p>
+      <div className="skill-editor-grid">
+        <input
+          className="skill-editor-field"
+          type="text"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="For eksempel React"
+        />
+        <select className="skill-editor-field" value={level} onChange={(event) => setLevel(Number(event.target.value))}>
+          <option value={1}>1 - Nybegynner</option>
+          <option value={2}>2 - Litt erfaring</option>
+          <option value={3}>3 - God</option>
+          <option value={4}>4 - Sterk</option>
+          <option value={5}>5 - Svært sterk</option>
+        </select>
+        <button
+          type="button"
+          className="btn btn-secondary btn-small"
+          onClick={() => {
+            const trimmed = name.trim();
+            if (!trimmed) return;
+            onAdd({ name: trimmed, level });
+            setName('');
+            setLevel(3);
+          }}
+        >
+          Legg til
+        </button>
+      </div>
+      <div className="skill-editor-list">
+        {skills.map((skill) => (
+          <div key={skill.name} className="skill-editor-card">
+            <div>
+              <strong>{skill.name}</strong>
+            </div>
+            <input
+              className="skill-editor-field"
+              type="range"
+              min="1"
+              max="5"
+              value={skill.level}
+              onChange={(event) => onLevelChange(skill.name, Number(event.target.value))}
+            />
+            <div className="skill-editor-actions">
+              <span>{skill.level}/5</span>
+              <button type="button" className="btn btn-secondary btn-small" onClick={() => onRemove(skill.name)}>
+                Fjern
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function mapPublishedCaseToMatch(item, student) {
+  return {
+    ...item,
+    scoreSummary: scoreCaseAgainstStudent(item, student),
+  };
+}
 
 export default function StudentProfile({ userRole }) {
   const navigate = useNavigate();
   const isCompany = userRole === 'company';
 
-  const [student, setStudent] = useState({
-    firstName: 'Ola',
-    lastName: 'Nordmann',
-    email: 'ola.nordmann@email.com',
-    phone: '+47 123 45 678',
-    bio: 'Fullstudent ved NTNU som søker praktisk erfaring innen teknologi.',
-    school: 'NTNU',
-    field: 'Datateknologi',
-    graduationYear: 2025,
-  });
-
-  const [company, setCompany] = useState({
-    name: 'Nordic Tech AS',
-    contact: 'Kari Hansen',
-    email: 'karriere@nordictech.no',
-    phone: '+47 987 65 432',
-    industry: 'Programvare og konsulenttjenester',
-    description: 'Nordic Tech AS kobler studenter med praksisoppdrag innen produktutvikling og IT.',
-  });
-
-  const [appliedInternships] = useState([
-    { id: 1, company: 'Teknologi AS', position: 'Frontend Internship', status: 'pending', appliedDate: '2024-01-15' },
-    { id: 2, company: 'Innovasjon Norge', position: 'Web Developer', status: 'accepted', appliedDate: '2024-01-10' },
-  ]);
-
-  const [savedInternships] = useState([
-    { id: 3, company: 'Data Systems', position: 'Backend Developer' },
-    { id: 4, company: 'Cloud Solutions', position: 'Full Stack Developer' },
-  ]);
-
-  const [publishedAds] = useState([
-    { id: 1, title: 'Frontend-utvikler praksis', status: 'Publisert', applicants: 18 },
-    { id: 2, title: 'Dataanalytiker praksis', status: 'Under vurdering', applicants: 7 },
-  ]);
-
-  const [candidateHighlights] = useState([
-    { id: 1, name: 'Sara Berg', skill: 'React og TypeScript', school: 'UiO' },
-    { id: 2, name: 'Amir Ali', skill: 'Dataanalyse og Python', school: 'BI' },
-  ]);
-
+  const [student, setStudent] = useState(() => loadStoredJson(STORAGE_KEYS.studentProfile, defaultStudentProfile));
+  const [company, setCompany] = useState(() => loadStoredJson(STORAGE_KEYS.companyProfile, defaultCompanyProfile));
+  const [drafts] = useState(() => loadStoredJson(STORAGE_KEYS.caseDrafts, defaultDrafts));
+  const [publishedCases] = useState(() => loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases));
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(student);
   const [companyEditData, setCompanyEditData] = useState(company);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (isCompany) {
-      setCompanyEditData((prev) => ({ ...prev, [name]: value }));
+  const activeStudent = isEditing && !isCompany ? editData : student;
+  const caseMatches = useMemo(
+    () =>
+      publishedCases
+        .map((item) => mapPublishedCaseToMatch(item, activeStudent))
+        .sort((left, right) => right.scoreSummary.totalScore - left.scoreSummary.totalScore),
+    [publishedCases, activeStudent]
+  );
+  const notifications = caseMatches.filter(
+    (item) => item.scoreSummary.totalScore >= activeStudent.notificationThreshold
+  );
+
+  const updateStudentField = (name, value) => {
+    setEditData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const updateCompanyField = (name, value) => {
+    setCompanyEditData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const addTag = (field, value, isCompanyProfile = false) => {
+    if (isCompanyProfile) {
+      setCompanyEditData((prev) => ({
+        ...prev,
+        [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
+      }));
       return;
     }
 
-    setEditData((prev) => ({ ...prev, [name]: value }));
+    setEditData((prev) => ({
+      ...prev,
+      [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
+    }));
+  };
+
+  const removeTag = (field, value, isCompanyProfile = false) => {
+    if (isCompanyProfile) {
+      setCompanyEditData((prev) => ({
+        ...prev,
+        [field]: prev[field].filter((item) => item !== value),
+      }));
+      return;
+    }
+
+    setEditData((prev) => ({
+      ...prev,
+      [field]: prev[field].filter((item) => item !== value),
+    }));
+  };
+
+  const addSkill = (skill) => {
+    setEditData((prev) => {
+      const exists = prev.skills.some((item) => item.name.toLowerCase() === skill.name.toLowerCase());
+      if (exists) {
+        return prev;
+      }
+      return { ...prev, skills: [...prev.skills, skill] };
+    });
+  };
+
+  const removeSkill = (name) => {
+    setEditData((prev) => ({
+      ...prev,
+      skills: prev.skills.filter((skill) => skill.name !== name),
+    }));
+  };
+
+  const updateSkillLevel = (name, level) => {
+    setEditData((prev) => ({
+      ...prev,
+      skills: prev.skills.map((skill) => (skill.name === name ? { ...skill, level } : skill)),
+    }));
   };
 
   const handleSaveChanges = () => {
     if (isCompany) {
       setCompany(companyEditData);
+      saveStoredJson(STORAGE_KEYS.companyProfile, companyEditData);
     } else {
       setStudent(editData);
+      saveStoredJson(STORAGE_KEYS.studentProfile, editData);
     }
     setIsEditing(false);
-    alert(isCompany ? 'Bedriftsprofilen er oppdatert!' : 'Profilen din har blitt oppdatert!');
   };
 
   const handleCancel = () => {
@@ -76,38 +251,37 @@ export default function StudentProfile({ userRole }) {
     setIsEditing(false);
   };
 
-  const getStatusBadge = (status) => {
-    const statusClasses = {
-      pending: 'badge-pending',
-      accepted: 'badge-accepted',
-      rejected: 'badge-rejected',
-    };
-    const statusText = {
-      pending: 'Venter',
-      accepted: 'Godtatt',
-      rejected: 'Avslått',
-    };
-    return <span className={`status-badge ${statusClasses[status]}`}>{statusText[status]}</span>;
+  const getStatusBadge = (score, threshold = activeStudent.notificationThreshold) => {
+    if (score >= 80) return <span className="status-badge badge-accepted">Sterk match</span>;
+    if (score >= threshold) return <span className="status-badge badge-pending">Relevant</span>;
+    return <span className="status-badge badge-rejected">Lavere match</span>;
+  };
+
+  const openRecommendedAd = (id) => {
+    navigate(`/internships?selected=${id}`);
   };
 
   return (
     <main className="student-profile">
       <div className="container">
-        <section className="profile-header">
+        <section className="profile-header profile-header-accent">
           <div className="profile-avatar">
             <div className="avatar-placeholder">
-              {isCompany ? company.name.slice(0, 2).toUpperCase() : `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`}
+              {isCompany
+                ? company.logo || company.name.slice(0, 2).toUpperCase()
+                : `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`}
             </div>
           </div>
           <div className="profile-info">
             {!isEditing ? (
               <>
                 <h1>{isCompany ? company.name : `${student.firstName} ${student.lastName}`}</h1>
-                <p className="bio">{isCompany ? company.description : student.bio}</p>
+                <p className="bio">{isCompany ? company.description : student.headline}</p>
                 <div className="profile-details">
                   <span>📧 {isCompany ? company.email : student.email}</span>
                   <span>📱 {isCompany ? company.phone : student.phone}</span>
-                  <span>{isCompany ? `🏢 ${company.industry}` : `🎓 ${student.school} - ${student.field}`}</span>
+                  <span>{isCompany ? `🏢 ${company.industry} • ${company.size}` : `🎓 ${student.school} • ${student.degreeLevel} i ${student.field}`}</span>
+                  <span>{isCompany ? `📍 ${company.location}` : `📍 ${student.location} • Varselterskel ${student.notificationThreshold}%`}</span>
                 </div>
                 <button
                   className="btn btn-secondary"
@@ -117,68 +291,150 @@ export default function StudentProfile({ userRole }) {
                     setIsEditing(true);
                   }}
                 >
-                  {isCompany ? 'Rediger bedriftsprofil' : 'Rediger profil'}
+                  {isCompany ? 'Rediger bedriftsprofil' : 'Rediger studentprofil'}
                 </button>
               </>
             ) : (
-              <div className="edit-form">
+              <div className="edit-form edit-form-accent">
                 {isCompany ? (
                   <>
                     <div className="form-group">
                       <label>Bedriftsnavn</label>
-                      <input type="text" name="name" value={companyEditData.name} onChange={handleInputChange} />
+                      <input type="text" value={companyEditData.name} onChange={(event) => updateCompanyField('name', event.target.value)} />
                     </div>
                     <div className="form-group">
                       <label>Kontaktperson</label>
-                      <input type="text" name="contact" value={companyEditData.contact} onChange={handleInputChange} />
+                      <input type="text" value={companyEditData.contact} onChange={(event) => updateCompanyField('contact', event.target.value)} />
                     </div>
                     <div className="form-group">
                       <label>E-post</label>
-                      <input type="email" name="email" value={companyEditData.email} onChange={handleInputChange} />
+                      <input type="email" value={companyEditData.email} onChange={(event) => updateCompanyField('email', event.target.value)} />
                     </div>
                     <div className="form-group">
                       <label>Telefon</label>
-                      <input type="tel" name="phone" value={companyEditData.phone} onChange={handleInputChange} />
+                      <input type="tel" value={companyEditData.phone} onChange={(event) => updateCompanyField('phone', event.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Nettside</label>
+                      <input type="text" value={companyEditData.website} onChange={(event) => updateCompanyField('website', event.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Lokasjon</label>
+                      <input type="text" value={companyEditData.location} onChange={(event) => updateCompanyField('location', event.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Bedriftsstorrelse</label>
+                      <input type="text" value={companyEditData.size} onChange={(event) => updateCompanyField('size', event.target.value)} />
                     </div>
                     <div className="form-group">
                       <label>Bransje</label>
-                      <input type="text" name="industry" value={companyEditData.industry} onChange={handleInputChange} />
+                      <input type="text" value={companyEditData.industry} onChange={(event) => updateCompanyField('industry', event.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>Bedriftsbeskrivelse</label>
-                      <textarea name="description" value={companyEditData.description} onChange={handleInputChange} rows="4"></textarea>
+                      <label>Beskrivelse</label>
+                      <textarea rows="4" value={companyEditData.description} onChange={(event) => updateCompanyField('description', event.target.value)} />
                     </div>
+                    <TagEditor
+                      label="Bedriftskvalifikasjoner"
+                      items={companyEditData.companyQualifications}
+                      onAdd={(value) => addTag('companyQualifications', value, true)}
+                      onRemove={(value) => removeTag('companyQualifications', value, true)}
+                      placeholder="For eksempel Produktutvikling"
+                    />
+                    <TagEditor
+                      label="Arbeidsområder"
+                      items={companyEditData.workAreas}
+                      onAdd={(value) => addTag('workAreas', value, true)}
+                      onRemove={(value) => removeTag('workAreas', value, true)}
+                      placeholder="For eksempel Analyseverktøy"
+                    />
+                    <TagEditor
+                      label="Rekrutteringsfokus"
+                      items={companyEditData.hiringFocus}
+                      onAdd={(value) => addTag('hiringFocus', value, true)}
+                      onRemove={(value) => removeTag('hiringFocus', value, true)}
+                      placeholder="For eksempel Frontend"
+                    />
                   </>
                 ) : (
                   <>
                     <div className="form-group">
                       <label>Fornavn</label>
-                      <input type="text" name="firstName" value={editData.firstName} onChange={handleInputChange} />
+                      <input type="text" value={editData.firstName} onChange={(event) => updateStudentField('firstName', event.target.value)} />
                     </div>
                     <div className="form-group">
                       <label>Etternavn</label>
-                      <input type="text" name="lastName" value={editData.lastName} onChange={handleInputChange} />
+                      <input type="text" value={editData.lastName} onChange={(event) => updateStudentField('lastName', event.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>E-post</label>
-                      <input type="email" name="email" value={editData.email} onChange={handleInputChange} />
-                    </div>
-                    <div className="form-group">
-                      <label>Telefon</label>
-                      <input type="tel" name="phone" value={editData.phone} onChange={handleInputChange} />
+                      <label>Overskrift</label>
+                      <input type="text" value={editData.headline} onChange={(event) => updateStudentField('headline', event.target.value)} />
                     </div>
                     <div className="form-group">
                       <label>Biografi</label>
-                      <textarea name="bio" value={editData.bio} onChange={handleInputChange} rows="4"></textarea>
+                      <textarea rows="4" value={editData.bio} onChange={(event) => updateStudentField('bio', event.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>Skole</label>
-                      <input type="text" name="school" value={editData.school} onChange={handleInputChange} />
+                      <label>E-post</label>
+                      <input type="email" value={editData.email} onChange={(event) => updateStudentField('email', event.target.value)} />
                     </div>
                     <div className="form-group">
-                      <label>Fagfelt</label>
-                      <input type="text" name="field" value={editData.field} onChange={handleInputChange} />
+                      <label>Telefon</label>
+                      <input type="tel" value={editData.phone} onChange={(event) => updateStudentField('phone', event.target.value)} />
                     </div>
+                    <div className="form-group">
+                      <label>Lokasjon</label>
+                      <input type="text" value={editData.location} onChange={(event) => updateStudentField('location', event.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Studieprogram</label>
+                      <input type="text" value={editData.field} onChange={(event) => updateStudentField('field', event.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label>Varselterskel</label>
+                      <input type="number" min="0" max="100" value={editData.notificationThreshold} onChange={(event) => updateStudentField('notificationThreshold', Number(event.target.value))} />
+                    </div>
+                    <SkillEditor
+                      skills={editData.skills}
+                      onAdd={addSkill}
+                      onRemove={removeSkill}
+                      onLevelChange={updateSkillLevel}
+                    />
+                    <TagEditor
+                      label="Faglige interesser"
+                      items={editData.professionalInterests}
+                      onAdd={(value) => addTag('professionalInterests', value)}
+                      onRemove={(value) => removeTag('professionalInterests', value)}
+                      placeholder="For eksempel Produktdesign"
+                    />
+                    <TagEditor
+                      label="Personlige egenskaper"
+                      items={editData.personalCharacteristics}
+                      onAdd={(value) => addTag('personalCharacteristics', value)}
+                      onRemove={(value) => removeTag('personalCharacteristics', value)}
+                      placeholder="For eksempel Strukturert"
+                    />
+                    <TagEditor
+                      label="Pågående fag"
+                      items={editData.currentSubjects}
+                      onAdd={(value) => addTag('currentSubjects', value)}
+                      onRemove={(value) => removeTag('currentSubjects', value)}
+                      placeholder="For eksempel Webutvikling"
+                    />
+                    <TagEditor
+                      label="Fullførte fag"
+                      items={editData.completedSubjects}
+                      onAdd={(value) => addTag('completedSubjects', value)}
+                      onRemove={(value) => removeTag('completedSubjects', value)}
+                      placeholder="For eksempel Databaser"
+                    />
+                    <TagEditor
+                      label="Foretrukne steder"
+                      items={editData.preferredLocations}
+                      onAdd={(value) => addTag('preferredLocations', value)}
+                      onRemove={(value) => removeTag('preferredLocations', value)}
+                      placeholder="For eksempel Oslo"
+                    />
                   </>
                 )}
                 <div className="form-actions">
@@ -193,17 +449,61 @@ export default function StudentProfile({ userRole }) {
         {isCompany ? (
           <>
             <section className="profile-section">
-              <h2>Publiserte annonser</h2>
+              <h2>Bedriftsoversikt</h2>
               <div className="applications-list">
-                {publishedAds.map((ad) => (
+                <div className="application-card">
+                  <div className="app-info">
+                    <h3>Registrering</h3>
+                    <p>{company.registrationComplete ? 'Registrert og klar for publisering.' : 'Registrering ikke fullfort.'}</p>
+                    <small>{company.location} • {company.size}</small>
+                  </div>
+                  <div className="app-status">{getStatusBadge(85, 65)}</div>
+                </div>
+                <div className="application-card">
+                  <div className="app-info">
+                    <h3>Forventningsgrunnlag</h3>
+                    <p>{company.expectationsQualityScore}% kvalitet i bedriftsprofilen</p>
+                    <small>Kan forbedres ved a beskrive leveranser og teamarbeid tydeligere.</small>
+                  </div>
+                  <div className="app-status">{getStatusBadge(company.expectationsQualityScore, 65)}</div>
+                </div>
+              </div>
+            </section>
+
+            <section className="profile-section">
+              <h2>Pågående annonsearbeid</h2>
+              {drafts.length > 0 ? (
+                <div className="applications-list">
+                  {drafts.map((draft) => (
+                    <div key={draft.id} className="application-card">
+                      <div className="app-info">
+                        <h3>{draft.title || 'Ny upublisert sak'}</h3>
+                        <p>{draft.startWithin || 'Ingen oppstartsfrist lagt inn'}</p>
+                        <small>Sist oppdatert {formatDate(draft.lastEditedAt)}</small>
+                      </div>
+                      <div className="app-status">
+                        <button className="btn btn-primary btn-small" onClick={() => navigate('/Chatbot_test')}>Fortsett</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">Ingen pågående annonseutkast akkurat nå.</p>
+              )}
+            </section>
+
+            <section className="profile-section">
+              <h2>Publiserte saker</h2>
+              <div className="applications-list">
+                {publishedCases.map((ad) => (
                   <div key={ad.id} className="application-card">
                     <div className="app-info">
                       <h3>{ad.title}</h3>
-                      <p>{ad.status}</p>
-                      <small>{ad.applicants} kandidater har vist interesse</small>
+                      <p>{ad.classification?.type || 'Bachelor'} • Viktigste krav: {ad.topQualification || ad.requirementAnalysis?.mostImportantQualification}</p>
+                      <small>Publisert {formatDate(ad.publishedAt)}</small>
                     </div>
                     <div className="app-status">
-                      <button className="btn btn-primary btn-small" onClick={() => navigate('/Chatbot_test')}>Rediger</button>
+                      <button className="btn btn-primary btn-small" onClick={() => navigate('/Chatbot_test')}>Rediger ny versjon</button>
                     </div>
                   </div>
                 ))}
@@ -211,111 +511,118 @@ export default function StudentProfile({ userRole }) {
             </section>
 
             <section className="profile-section">
-              <h2>Kandidatoversikt</h2>
-              <div className="saved-list">
-                {candidateHighlights.map((candidate) => (
-                  <div key={candidate.id} className="saved-card">
-                    <div className="saved-info">
-                      <h3>{candidate.name}</h3>
-                      <p>{candidate.skill}</p>
-                      <small>{candidate.school}</small>
-                    </div>
-                    <button className="btn btn-primary btn-small">Se profil</button>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="profile-section">
-              <h2>Hurtiglenker</h2>
-              <div className="quick-actions">
-                <button className="action-btn" onClick={() => navigate('/Chatbot_test')}>
-                  <span className="action-icon">🤖</span>
-                  <span>Opprett AI-annonse</span>
-                </button>
-                <button className="action-btn" onClick={() => navigate('/apply')}>
-                  <span className="action-icon">📢</span>
-                  <span>Publiser oppdrag</span>
-                </button>
-                <button className="action-btn" onClick={() => navigate('/internships')}>
-                  <span className="action-icon">📊</span>
-                  <span>Se markedet</span>
-                </button>
-                <button className="action-btn">
-                  <span className="action-icon">⚙️</span>
-                  <span>Innstillinger</span>
-                </button>
-              </div>
+              <h2>Bedriftsprofil</h2>
+              <p><strong>Kjerneområder</strong></p>
+              <ChipList items={company.companyQualifications} />
+              <p className="section-spacer-top"><strong>Arbeidsområder</strong></p>
+              <ChipList items={company.workAreas} />
+              <p className="section-spacer-top"><strong>Rekrutteringsfokus</strong></p>
+              <ChipList items={company.hiringFocus} />
             </section>
           </>
         ) : (
           <>
             <section className="profile-section">
-              <h2>Mine søknader</h2>
-              {appliedInternships.length > 0 ? (
+              <h2>Faglig profil</h2>
+              <p><strong>Rangerte ferdigheter</strong></p>
+              <div className="skill-bar-list">
+                {student.skills
+                  .slice()
+                  .sort((left, right) => right.level - left.level)
+                  .map((skill) => (
+                    <div key={skill.name} className="skill-bar-row">
+                      <strong>{skill.name}</strong>
+                      <div className="skill-bar-track">
+                        <div className={`skill-bar-fill skill-bar-fill-${skill.level}`} />
+                      </div>
+                      <span>{skill.level}/5</span>
+                    </div>
+                  ))}
+              </div>
+              <p className="section-spacer-top"><strong>Interesser</strong></p>
+              <ChipList items={student.professionalInterests} />
+              <p className="section-spacer-top"><strong>Personlige egenskaper</strong></p>
+              <ChipList items={student.personalCharacteristics} />
+            </section>
+
+            <section className="profile-section">
+              <h2>Fag og preferanser</h2>
+              <p><strong>Pågående fag</strong></p>
+              <ChipList items={student.currentSubjects} />
+              <p className="section-spacer-top"><strong>Fullførte fag</strong></p>
+              <ChipList items={student.completedSubjects} />
+              <p className="section-spacer-top"><strong>Foretrukne steder</strong></p>
+              <ChipList items={student.preferredLocations} />
+            </section>
+
+            <section className="profile-section">
+              <h2>Varsler og match</h2>
+              {notifications.length > 0 ? (
                 <div className="applications-list">
-                  {appliedInternships.map((app) => (
-                    <div key={app.id} className="application-card">
+                  {notifications.map((item) => (
+                    <div key={item.id} className="application-card">
                       <div className="app-info">
-                        <h3>{app.company}</h3>
-                        <p>{app.position}</p>
-                        <small>Søkt {app.appliedDate}</small>
+                        <h3>{item.title}</h3>
+                        <p>{item.classification?.type || 'Bachelor'} • {item.scoreSummary.totalScore}% match</p>
+                        <small>
+                          Beste ferdigheter: {item.scoreSummary.rankedSkillMatches.slice(0, 2).map((skill) => `${skill.name} (${skill.level}/5)`).join(', ') || item.scoreSummary.topQualification}
+                        </small>
                       </div>
-                      <div className="app-status">
-                        {getStatusBadge(app.status)}
+                      <div className="app-status app-status-stack">
+                        {getStatusBadge(item.scoreSummary.totalScore)}
+                        <button className="btn btn-primary btn-small" onClick={() => openRecommendedAd(item.id)}>
+                          Se annonse
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="empty-state">Du har ikke søkt på noen praksisplasser ennå.</p>
+                <p className="empty-state">Ingen publiserte saker ligger over varselterskelen din ennå.</p>
               )}
             </section>
 
             <section className="profile-section">
-              <h2>Lagrede praksisplasser</h2>
-              {savedInternships.length > 0 ? (
-                <div className="saved-list">
-                  {savedInternships.map((internship) => (
-                    <div key={internship.id} className="saved-card">
-                      <div className="saved-info">
-                        <h3>{internship.company}</h3>
-                        <p>{internship.position}</p>
-                      </div>
-                      <button className="btn btn-primary btn-small">Søk nå</button>
+              <h2>Match mot publiserte saker</h2>
+              <div className="applications-list">
+                {caseMatches.map((item) => (
+                  <div key={item.id} className="application-card">
+                    <div className="app-info">
+                      <h3>{item.title}</h3>
+                      <p>{item.classification?.type || 'Bachelor'} • Total score {item.scoreSummary.totalScore}%</p>
+                      <small>
+                        Toppferdigheter: {item.scoreSummary.rankedSkillMatches.slice(0, 2).map((skill) => `${skill.name} (${skill.level}/5)`).join(', ') || 'Ingen direkte ferdighetstreff'}
+                      </small>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-state">Du har ikke lagret noen praksisplasser ennå.</p>
-              )}
+                    <div className="app-status app-status-stack">
+                      {getStatusBadge(item.scoreSummary.totalScore)}
+                      <button className="btn btn-primary btn-small" onClick={() => openRecommendedAd(item.id)}>
+                        Åpen annonse
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
 
             <section className="profile-section">
-              <h2>Hurtiglenker</h2>
-              <div className="quick-actions">
-                <button className="action-btn" onClick={() => navigate('/internships')}>
-                  <span className="action-icon">🔍</span>
-                  <span>Se alle praksisplasser</span>
-                </button>
-                <button className="action-btn" onClick={() => navigate('/apply')}>
-                  <span className="action-icon">📝</span>
-                  <span>Søk på praksis</span>
-                </button>
-                <button className="action-btn">
-                  <span className="action-icon">📥</span>
-                  <span>Last ned CV</span>
-                </button>
-                <button className="action-btn">
-                  <span className="action-icon">⚙️</span>
-                  <span>Innstillinger</span>
-                </button>
+              <h2>Automatisk datainnhenting</h2>
+              <div className="applications-list">
+                <div className="application-card">
+                  <div className="app-info">
+                    <h3>Status</h3>
+                    <p>{student.dataCollectionStatus}</p>
+                    <small>Neste naturlige steg er synk mot studieprogresjon, CV eller LinkedIn-import.</small>
+                  </div>
+                  <div className="app-status">
+                    <button className="btn btn-secondary btn-small" onClick={() => navigate('/internships')}>Se praksisplasser</button>
+                  </div>
+                </div>
               </div>
             </section>
           </>
         )}
       </div>
-
       <Footer />
     </main>
   );

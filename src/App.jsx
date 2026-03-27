@@ -6,7 +6,6 @@ import Internships from './pages/Internships';
 import Apply from './pages/Apply';
 import Chatbot from './pages/Chatbot';
 import StudentProfile from './pages/StudentProfile';
-import './styles/index.css';
 
 function App() {
   const [userRole, setUserRole] = useState('guest');
