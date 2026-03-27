@@ -112,9 +112,11 @@ export default function Home({ userRole, setUserRole }) {
           <Link to={isCompany ? '/Chatbot_test' : '/internships'} className="btn btn-primary">
             {isCompany ? 'Opprett annonse' : 'Utforsk praksisplasser'}
           </Link>
-          <Link to={isCompany ? '/profile' : '/Chatbot_test'} className="btn btn-secondary">
-            {isCompany ? 'Se bedriftsoversikt' : 'Test AI-verktøy'}
-          </Link>
+          {isCompany ? (
+            <Link to="/profile" className="btn btn-secondary">
+              Se bedriftsoversikt
+            </Link>
+          ) : null}
         </div>
       </section>
 

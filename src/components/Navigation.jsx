@@ -27,80 +27,85 @@ export default function Navigation({ userRole }) {
         ? 'Bedriftsvisning'
         : 'Ingen testrolle valgt';
 
-  const navItems = [
-    {
-      to: '/',
-      label: 'Hjem',
-      icon: (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M3 10.75 12 3l9 7.75v9.25a1 1 0 0 1-1 1h-5.5v-6.5h-5V21H4a1 1 0 0 1-1-1z" />
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      to: '/internships',
-      label: 'Praksisplasser',
-      icon: (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1Z" />
-            <path d="M4 8.5h16A1.5 1.5 0 0 1 21.5 10v8.5A1.5 1.5 0 0 1 20 20H4A1.5 1.5 0 0 1 2.5 18.5V10A1.5 1.5 0 0 1 4 8.5Zm6.75 4a.75.75 0 0 0-.75.75v.5H8.5a.75.75 0 0 0 0 1.5H10v.5a.75.75 0 0 0 1.5 0v-.5h1.5a.75.75 0 0 0 0-1.5h-1.5v-.5a.75.75 0 0 0-.75-.75Z" />
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      to: '/apply',
-      label: userRole === 'company' ? 'Publiser' : 'Søk',
-      icon: userRole === 'company' ? (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M12 3a1 1 0 0 1 1 1v7h7a1 1 0 1 1 0 2h-7v7a1 1 0 1 1-2 0v-7H4a1 1 0 1 1 0-2h7V4a1 1 0 0 1 1-1Z" />
-          </svg>
-        </NavIcon>
-      ) : (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-            <path d="M15.5 14.1a1 1 0 0 1 1.4 0l3.8 3.8a1 1 0 1 1-1.4 1.4l-3.8-3.8a1 1 0 0 1 0-1.4Z" />
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      to: '/profile',
-      label: userRole === 'company' ? 'Bedriftsside' : 'Min profil',
-      icon: userRole === 'company' ? (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M5 3.5h9A1.5 1.5 0 0 1 15.5 5v15A1.5 1.5 0 0 1 14 21.5H5A1.5 1.5 0 0 1 3.5 20V5A1.5 1.5 0 0 1 5 3.5Zm2.25 3a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5Zm0 4a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5Zm0 4a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5Z" />
-            <path d="M17.5 8.5h1.5A1.5 1.5 0 0 1 20.5 10v10a1.5 1.5 0 0 1-1.5 1.5h-1.5Z" />
-          </svg>
-        </NavIcon>
-      ) : (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M12 4.25a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Z" />
-            <path d="M5 19a5.75 5.75 0 0 1 11.5 0 .75.75 0 0 1-.75.75H5.75A.75.75 0 0 1 5 19Z" />
-          </svg>
-        </NavIcon>
-      ),
-    },
-    {
-      to: '/Chatbot_test',
-      label: userRole === 'company' ? 'AI-annonse' : 'AI-verktøy',
-      icon: (
-        <NavIcon>
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M8.5 4A2.5 2.5 0 0 0 6 6.5v2A2.5 2.5 0 0 0 8.5 11h7A2.5 2.5 0 0 0 18 8.5v-2A2.5 2.5 0 0 0 15.5 4Zm0 9A2.5 2.5 0 0 0 6 15.5v2A2.5 2.5 0 0 0 8.5 20h7a2.5 2.5 0 0 0 2.5-2.5v-2A2.5 2.5 0 0 0 15.5 13Z" />
-            <path d="M4.75 8a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-1.5 0v-.5A.75.75 0 0 1 4.75 8Zm14.5 0a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-1.5 0v-.5a.75.75 0 0 1 .75-.75Zm-14.5 6.5a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-1.5 0v-.5a.75.75 0 0 1 .75-.75Zm14.5 0a.75.75 0 0 1 .75.75v.5a.75.75 0 0 1-1.5 0v-.5a.75.75 0 0 1 .75-.75Z" />
-          </svg>
-        </NavIcon>
-      ),
-    },
-  ];
+  const homeItem = {
+    to: '/',
+    label: 'Hjem',
+    icon: (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M3 10.75 12 3l9 7.75v9.25a1 1 0 0 1-1 1h-5.5v-6.5h-5V21H4a1 1 0 0 1-1-1z" />
+        </svg>
+      </NavIcon>
+    ),
+  };
+
+  const internshipsItem = {
+    to: '/internships',
+    label: 'Praksisplasser',
+    icon: (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1Z" />
+          <path d="M4 8.5h16A1.5 1.5 0 0 1 21.5 10v8.5A1.5 1.5 0 0 1 20 20H4A1.5 1.5 0 0 1 2.5 18.5V10A1.5 1.5 0 0 1 4 8.5Zm2 2a.75.75 0 0 0-.75.75v1.25c0 .41.34.75.75.75h12a.75.75 0 0 0 .75-.75v-1.25a.75.75 0 0 0-.75-.75Z" />
+        </svg>
+      </NavIcon>
+    ),
+  };
+
+  const applyItem = {
+    to: '/apply',
+    label: userRole === 'company' ? 'Publiser' : 'Søk',
+    icon: userRole === 'company' ? (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M6.5 4h7a2.5 2.5 0 0 1 2.5 2.5V8h1.5A2.5 2.5 0 0 1 20 10.5v7A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-11A2.5 2.5 0 0 1 6.5 4Zm1 4.5a.75.75 0 0 0 0 1.5h4.75V12a.75.75 0 0 0 1.5 0V10h1.75a.75.75 0 0 0 0-1.5h-1.75v-1.75a.75.75 0 0 0-1.5 0V8.5Z" />
+        </svg>
+      </NavIcon>
+    ) : (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M6.5 3.5h8.38a2.5 2.5 0 0 1 1.77.73l1.62 1.62a2.5 2.5 0 0 1 .73 1.77V18A2.5 2.5 0 0 1 16.5 20.5h-10A2.5 2.5 0 0 1 4 18V6A2.5 2.5 0 0 1 6.5 3.5Zm1.25 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 4a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5Z" />
+          <path d="M14.97 15.47a.75.75 0 0 1 1.06 0l1.5 1.5a.75.75 0 0 1-1.06 1.06l-1.5-1.5a.75.75 0 0 1 0-1.06Z" />
+          <path d="M13.75 14a2.25 2.25 0 1 1 0 4.5 2.25 2.25 0 0 1 0-4.5Zm0 1.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" />
+        </svg>
+      </NavIcon>
+    ),
+  };
+
+  const aiItem = {
+    to: '/Chatbot_test',
+    label: userRole === 'company' ? 'AI-annonse' : 'AI-verktøy',
+    icon: (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3.5a.75.75 0 0 1 .75.75v1.13a4.76 4.76 0 0 1 3.87 3.87h1.13a.75.75 0 0 1 0 1.5h-1v1.5h1a.75.75 0 0 1 0 1.5h-1.13a4.76 4.76 0 0 1-3.87 3.87v1.13a.75.75 0 0 1-1.5 0v-1.13a4.76 4.76 0 0 1-3.87-3.87H6.25a.75.75 0 0 1 0-1.5h1v-1.5h-1a.75.75 0 0 1 0-1.5h1.13a4.76 4.76 0 0 1 3.87-3.87V4.25A.75.75 0 0 1 12 3.5Zm0 3.25A3.25 3.25 0 1 0 15.25 10 3.25 3.25 0 0 0 12 6.75Zm0 1.5a1.75 1.75 0 1 1-1.75 1.75A1.75 1.75 0 0 1 12 8.25Z" />
+        </svg>
+      </NavIcon>
+    ),
+  };
+
+  const profileItem = {
+    to: '/profile',
+    label: userRole === 'company' ? 'Bedriftsside' : 'Min profil',
+    icon: userRole === 'company' ? (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M5.5 4h8A2.5 2.5 0 0 1 16 6.5V8h2.5A1.5 1.5 0 0 1 20 9.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4Zm1 4h2v2h-2Zm0 4h2v2h-2Zm0 4h2v2h-2Zm4-8h3.5v2H10.5Zm0 4h3.5v2H10.5Zm0 4h3.5v2H10.5Z" />
+        </svg>
+      </NavIcon>
+    ) : (
+      <NavIcon>
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 4.25a3.75 3.75 0 1 1 0 7.5 3.75 3.75 0 0 1 0-7.5Z" />
+          <path d="M5 19a5.75 5.75 0 0 1 11.5 0 .75.75 0 0 1-.75.75H5.75A.75.75 0 0 1 5 19Z" />
+        </svg>
+      </NavIcon>
+    ),
+  };
+
+  const navItems = userRole === 'company'
+    ? [homeItem, internshipsItem, applyItem, aiItem, profileItem]
+    : [homeItem, internshipsItem, applyItem, profileItem, aiItem];
 
   return (
     <nav className="navbar">
