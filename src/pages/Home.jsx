@@ -11,7 +11,8 @@ function mapPublishedCaseToInternship(item) {
   return {
     id: item.id,
     title: item.title,
-    company: item.logo || 'Bedrift',
+    company: item.companyName || item.logo || 'Bedrift',
+    companyName: item.companyName || item.logo || 'Bedrift',
     location: item.location,
     description: item.taskDescription,
     startDate: item.startDate,
@@ -29,6 +30,17 @@ function mapPublishedCaseToInternship(item) {
     assignmentContext: item.assignmentContext || item.taskDescription,
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
+    generatedAd: item.generatedAd || item.generatedAdData?.markdown || '',
+    generatedAdData: item.generatedAdData || null,
+    website: item.website || '',
+    companySummary: item.generatedAdData?.companySummary || item.companyProfileDescription || item.companyQualifications || '',
+    companyDescription: item.companyProfileDescription || item.companyQualifications || '',
+    companyQualifications: item.companyQualifications
+      ? item.companyQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [],
+    workAreas: item.workAreas || [],
+    industry: item.industry || '',
+    companySize: item.companySize || '',
   };
 }
 
@@ -109,14 +121,16 @@ export default function Home({ userRole, setUserRole }) {
               </button>
             </div>
           </div>
-          <Link to={isCompany ? '/Chatbot_test' : '/internships'} className="btn btn-primary">
-            {isCompany ? 'Opprett annonse' : 'Utforsk praksisplasser'}
-          </Link>
-          {isCompany ? (
-            <Link to="/profile" className="btn btn-secondary">
-              Se bedriftsoversikt
+          <div className={`hero-actions ${isCompany ? 'hero-actions-company' : ''}`}>
+            <Link to={isCompany ? '/Chatbot_test' : '/internships'} className="btn btn-primary">
+              {isCompany ? 'Opprett annonse' : 'Utforsk praksisplasser'}
             </Link>
-          ) : null}
+            {isCompany ? (
+              <Link to="/profile" className="btn btn-secondary">
+                Se bedriftsoversikt
+              </Link>
+            ) : null}
+          </div>
         </div>
       </section>
 

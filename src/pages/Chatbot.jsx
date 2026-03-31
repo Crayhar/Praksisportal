@@ -74,7 +74,7 @@ const WORK_MODE_OPTIONS = {
   remote: 'Remote',
 };
 
-function prepareCaseForm(form) {
+function prepareCaseForm(form, companyProfile) {
   const selectedRoleTracks =
     Array.isArray(form.roleTracks) && form.roleTracks.length > 0
       ? form.roleTracks
@@ -92,6 +92,7 @@ function prepareCaseForm(form) {
   const location = form.location?.trim() || '';
   const workMode = WORK_MODE_OPTIONS[form.workMode] || WORK_MODE_OPTIONS.hybrid;
   const taskDescription = form.taskDescription?.trim() || '';
+  const website = companyProfile?.website?.trim() || form.website?.trim() || '';
 
   return {
     ...form,
@@ -105,6 +106,7 @@ function prepareCaseForm(form) {
     expectations:
       form.expectations?.trim() || `${collaborationExpectation} Arbeidsform: ${workMode}.`,
     personalQualifications: form.personalQualifications?.trim() || profile.personal,
+    website,
     startWithin: form.startWithin?.trim() || scope.startWithin,
     maxHours: String(form.maxHours || scope.hours),
     location: location || workMode,
@@ -123,7 +125,10 @@ function formatDate(dateString) {
   }).format(new Date(dateString));
 }
 
-function buildPrompt(form, classification, requirementAnalysis, mode = 'initial') {
+function buildPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
+  const websiteGuidance = form.website
+    ? `Bedriften har oppgitt nettsiden ${form.website}. Bruk den som viktig selskapskontekst.`
+    : 'Bedriften har ikke oppgitt nettside. Hvis selskapsnavn og beskrivelse ikke er nok til å skrive en presis annonse, skal du be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.';
   const revisionSection =
     mode === 'revision'
       ? `
@@ -141,8 +146,9 @@ Du er en norsk AI-assistent som hjelper en bedrift med å skrive en praksis- ell
 Hvis bedriften velger Usikker/annet på Hovedfokus, bruk informasjonen i de andre feltene for å finne det beste fokuset og klassifisere saken.
 
 Bedrift:
-- Navn/logo: ${form.logo || 'Ikke oppgitt'}
-- Nettside: ${form.website}
+- Navn: ${companyProfile?.name || form.logo || 'Ikke oppgitt'}
+- Logo: ${form.logo || 'Ikke oppgitt'}
+- Nettside: ${form.website || 'Ikke oppgitt'}
 - Hva bedriften gjør: ${form.companyQualifications}
 
 Oppdrag:
@@ -166,6 +172,7 @@ Oppdrag:
 - Viktigste kvalifikasjon i kravbildet: ${requirementAnalysis.mostImportantQualification}
 - Kvalitetsdekning for forventninger: ${requirementAnalysis.expectationCoverage}%
 - Revisjonsinstruksjon: ${form.revisionInstruction || 'Ingen'}
+- Ekstra veiledning: ${websiteGuidance}
 
 ${revisionSection}
 
@@ -206,6 +213,7 @@ Krav:
   8. Praktisk informasjon
   9. Kort avslutning
 - Hvis informasjon mangler, skriv konservativt og ikke finn opp fakta.
+- Hvis nettside mangler og bedriftsinformasjonen er for tynn, skriv tydelig at bedriften bør legge inn nettsidelenken i revisjonsinstruksjonsfeltet før neste AI-runde.
 - Alle lister skal inneholde korte tekstverdier.
 `.trim();
 }
@@ -213,6 +221,8 @@ Krav:
 function buildFallbackAd(form, classification, requirementAnalysis) {
   const professionalQualifications = parseList(form.professionalQualifications);
   const personalQualifications = parseList(form.personalQualifications);
+  const needsWebsiteFollowUp =
+    !form.website && (!form.companyQualifications.trim() || form.companyQualifications.trim().length < 80);
 
   return `
 ## ${form.title || form.taskFocus || 'Studentoppdrag'}
@@ -256,6 +266,7 @@ Viktigste kvalifikasjon i kravbildet: **${requirementAnalysis.mostImportantQuali
 
 ### Avslutning
 Vi ser etter en student som kan bidra med konkrete leveranser og samtidig fa relevant erfaring i en ekte arbeidssituasjon.
+${needsWebsiteFollowUp ? '\n\n**Merk:** Legg gjerne inn lenke til bedriftens nettside i revisjonsinstruksjonsfeltet før neste AI-runde hvis dere vil gi AI-en bedre selskapskontekst.' : ''}
 `.trim();
 }
 
@@ -381,13 +392,11 @@ function validateForm(form) {
   if (!form.companyQualifications.trim()) nextErrors.companyQualifications = 'Beskrivelse av hva bedriften gjør er påkrevd.';
   if (!form.professionalQualifications.trim()) nextErrors.professionalQualifications = 'Faglige kvalifikasjoner er påkrevd.';
   if (!form.personalQualifications.trim()) nextErrors.personalQualifications = 'Personlige kvalifikasjoner er påkrevd.';
-  if (!form.website.trim()) nextErrors.website = 'Nettside er påkrevd.';
   if (!form.location.trim()) nextErrors.location = 'Lokasjon er påkrevd.';
   if (!form.startDate) nextErrors.startDate = 'Startdato er påkrevd.';
   if (!form.endDate) nextErrors.endDate = 'Sluttdato er påkrevd.';
   if (!form.startWithin.trim()) nextErrors.startWithin = 'Start senest innen er påkrevd.';
   if (!form.maxHours) nextErrors.maxHours = 'Omfang i timer er påkrevd.';
-  if (!form.compensationAmount.trim()) nextErrors.compensationAmount = 'Kompensasjon er påkrevd.';
 
   if (form.startDate && form.endDate && form.startDate > form.endDate) {
     nextErrors.endDate = 'Sluttdato kan ikke være tidligere enn startdato.';
@@ -396,7 +405,7 @@ function validateForm(form) {
   return nextErrors;
 }
 
-async function generateAdWithAi(form, classification, requirementAnalysis, mode = 'initial') {
+async function generateAdWithAi(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const openAiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
   const provider = openAiApiKey ? 'openai' : geminiApiKey ? 'google' : null;
@@ -417,7 +426,7 @@ async function generateAdWithAi(form, classification, requirementAnalysis, mode 
 
   llm.system('Du skriver profesjonelle norske student- og praksisannonser basert på strukturerte data.');
 
-  const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, mode), {
+  const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, companyProfile, mode), {
     max_tokens: 4096,
   });
 
@@ -448,11 +457,11 @@ export default function Chatbot({ userRole }) {
     saveStoredJson(STORAGE_KEYS.publishedCases, publishedCases);
   }, [publishedCases]);
 
-  const preparedForm = useMemo(() => prepareCaseForm(form), [form]);
+  const preparedForm = useMemo(() => prepareCaseForm(form, companyProfile), [form, companyProfile]);
   const classification = useMemo(() => classifyCase(preparedForm), [preparedForm]);
   const requirementAnalysis = useMemo(() => analyzeCaseRequirements(preparedForm), [preparedForm]);
-  const revisionSuggestions = useMemo(
-    () => buildRevisionSuggestions(preparedForm, {
+  const revisionSuggestions = useMemo(() => {
+    const suggestions = buildRevisionSuggestions(preparedForm, {
       professionalScore: {
         missing:
           parseList(preparedForm.professionalQualifications).length > 4
@@ -465,9 +474,15 @@ export default function Chatbot({ userRole }) {
             ? ['Mange personlige krav']
             : [],
       },
-    }),
-    [preparedForm]
-  );
+    });
+
+    if (!preparedForm.website) {
+      return ['Legg inn lenke til bedriftens nettside i revisjonsinstruksjonen for mer presis AI-kontekst', ...suggestions];
+    }
+
+    return suggestions;
+  }, [preparedForm]);
+  const isEditingPublishedCase = form.status === 'published';
 
   const updateField = (field, value) => {
     setForm((prev) => ({
@@ -537,6 +552,12 @@ export default function Chatbot({ userRole }) {
     setStatusMessage(`Fortsetter utkast: ${draft.title || 'Ny sak'}.`);
   };
 
+  const handleLoadPublishedCase = (publishedCase) => {
+    setForm(publishedCase);
+    setErrors({});
+    setStatusMessage(`Redigerer publisert sak: ${publishedCase.title || 'Ny sak'}. Publiser igjen for å oppdatere annonsen.`);
+  };
+
   const handleSaveDraft = () => {
     const nextDraft = {
       ...preparedForm,
@@ -579,7 +600,7 @@ export default function Chatbot({ userRole }) {
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
-      setStatusMessage('Fyll ut obligatoriske felt for a generere utkastet.');
+      setStatusMessage(`Fyll ut obligatoriske felt for a generere utkastet: ${Object.values(nextErrors).join(' ')}`);
       return;
     }
 
@@ -587,7 +608,7 @@ export default function Chatbot({ userRole }) {
     setStatusMessage('Systemet genererer annonseutkast og vurderer match mot studentprofilen.');
 
     try {
-      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, 'initial');
+      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, companyProfile, 'initial');
       persistGeneratedDraft(
         result.markdown,
         result.structured,
@@ -621,7 +642,7 @@ export default function Chatbot({ userRole }) {
     setStatusMessage('AI oppdaterer utkastet med de valgte endringene.');
 
     try {
-      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, 'revision');
+      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, companyProfile, 'revision');
       persistGeneratedDraft(
         result.markdown,
         result.structured,
@@ -645,19 +666,26 @@ export default function Chatbot({ userRole }) {
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
-      setStatusMessage('Fullfør alle obligatoriske felt for publisering.');
+      setStatusMessage(`Fullfør alle obligatoriske felt for publisering: ${Object.values(nextErrors).join(' ')}`);
       return;
     }
 
     const publishedCase = {
       ...preparedForm,
       title: preparedForm.title || preparedForm.taskFocus,
+      companyName: companyProfile.name,
+      companyLogo: companyProfile.logo,
+      industry: companyProfile.industry,
+      companySize: companyProfile.size,
+      workAreas: companyProfile.workAreas,
+      companyProfileDescription: companyProfile.description,
       classification,
       requirementAnalysis,
       topQualification: requirementAnalysis.mostImportantQualification,
       suggestions: revisionSuggestions,
       status: 'published',
-      publishedAt: new Date().toISOString(),
+      publishedAt: form.publishedAt || new Date().toISOString(),
+      lastEditedAt: new Date().toISOString(),
       generatedAd: form.generatedAd || buildFallbackAd(preparedForm, classification, requirementAnalysis),
       generatedAdData:
         form.generatedAdData ||
@@ -671,14 +699,12 @@ export default function Chatbot({ userRole }) {
 
     setPublishedCases((prev) => [publishedCase, ...prev.filter((item) => item.id !== publishedCase.id)]);
     setDrafts((prev) => prev.filter((draft) => draft.id !== publishedCase.id));
-    setForm(
-      createEmptyCaseDraft({
-        website: companyProfile.website,
-        logo: companyProfile.logo,
-        companyQualifications: companyProfile.description,
-      })
+    setForm(publishedCase);
+    setStatusMessage(
+      isEditingPublishedCase
+        ? 'Den publiserte saken er oppdatert.'
+        : 'Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.'
     );
-    setStatusMessage('Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.');
   };
 
   if (!isCompany) {
@@ -767,14 +793,21 @@ export default function Chatbot({ userRole }) {
 
           <h3 className="section-title-top">Publiserte saker</h3>
           <div className="draft-list">
-            {publishedCases.slice(0, 3).map((item) => (
-              <div key={item.id} className="draft-button">
+            {publishedCases.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`draft-button ${item.id === form.id ? 'active' : ''}`}
+                onClick={() => handleLoadPublishedCase(item)}
+              >
                 <strong className="draft-title">{item.title}</strong>
                 <span className="muted draft-meta">
-                  {item.classification?.type || 'Bachelor'} • Publisert {formatDate(item.publishedAt)}
+                  Publisert {formatDate(item.publishedAt)}
                 </span>
-                <span className="muted">Topprangert krav: {item.topQualification || item.requirementAnalysis?.mostImportantQualification}</span>
-              </div>
+                <span className="muted">
+                  Klikk for å redigere annonsen
+                </span>
+              </button>
             ))}
           </div>
         </aside>
@@ -794,6 +827,9 @@ export default function Chatbot({ userRole }) {
                 <button type="button" className="primary-action" onClick={handleGenerateFirstDraft} disabled={loading}>
                   {loading ? 'Genererer...' : 'Generer utkast'}
                 </button>
+                <button type="button" className="secondary-action" onClick={handlePublish}>
+                  {isEditingPublishedCase ? 'Oppdater publisert sak' : 'Publiser sak'}
+                </button>
                 <button type="button" className="secondary-action" onClick={handleSaveDraft}>
                   Lagre
                 </button>
@@ -804,24 +840,28 @@ export default function Chatbot({ userRole }) {
               <label>
                 Tittel *
                 <input
-                  className="case-input"
+                  className={`case-input ${errors.title ? 'case-input-error' : ''}`}
                   value={form.title}
                   onChange={(event) => updateField('title', event.target.value)}
                   placeholder="For eksempel Frontend-praksis for analyseplattform"
+                  aria-invalid={Boolean(errors.title)}
                 />
                 {errors.title ? <p className="error-text">{errors.title}</p> : null}
               </label>
 
-              <label>
-                Nettside *
+              <div>
+                <span>Nettside fra bedriftsprofil</span>
                 <input
                   className="case-input"
-                  value={form.website}
-                  onChange={(event) => updateField('website', event.target.value)}
-                  placeholder="https://bedrift.no"
+                  value={preparedForm.website || 'Ingen nettside lagt inn i bedriftsprofilen ennå'}
+                  readOnly
                 />
-                {errors.website ? <p className="error-text">{errors.website}</p> : null}
-              </label>
+                <p className="muted case-panel-top-copy">
+                  {preparedForm.website
+                    ? 'Denne lenken sendes automatisk til AI-en når første utkast genereres.'
+                    : 'Ingen nettside er lagret i bedriftsprofilen. Hvis AI-en mangler selskapskontekst, vil den be dere lime inn nettsidelenken i revisjonsinstruksjonsfeltet.'}
+                </p>
+              </div>
 
               <label className="full">
                 Rolle / hovedspor
@@ -848,10 +888,11 @@ export default function Chatbot({ userRole }) {
               <label className="full">
                 Kort oppdragsbrief *
                 <textarea
-                  className="case-textarea"
+                  className={`case-textarea ${errors.taskDescription ? 'case-input-error' : ''}`}
                   value={form.taskDescription}
                   onChange={(event) => updateField('taskDescription', event.target.value)}
                   placeholder="Beskriv hva studenten skal jobbe med, hva som skal leveres og hvorfor oppdraget er relevant."
+                  aria-invalid={Boolean(errors.taskDescription)}
                 />
                 {errors.taskDescription ? <p className="error-text">{errors.taskDescription}</p> : null}
               </label>
@@ -859,10 +900,11 @@ export default function Chatbot({ userRole }) {
               <label className="full">
                 Bedriftsbeskrivelse *
                 <textarea
-                  className="case-textarea"
+                  className={`case-textarea ${errors.companyQualifications ? 'case-input-error' : ''}`}
                   value={form.companyQualifications}
                   onChange={(event) => updateField('companyQualifications', event.target.value)}
                   placeholder="Kort om bedriften, teamet og hvorfor dere trenger en student."
+                  aria-invalid={Boolean(errors.companyQualifications)}
                 />
                 {errors.companyQualifications ? <p className="error-text">{errors.companyQualifications}</p> : null}
               </label>
@@ -870,10 +912,11 @@ export default function Chatbot({ userRole }) {
               <label className="full">
                 Viktige ferdigheter / teknologi *
                 <textarea
-                  className="case-textarea"
+                  className={`case-textarea ${errors.professionalQualifications ? 'case-input-error' : ''}`}
                   value={form.professionalQualifications}
                   onChange={(event) => updateField('professionalQualifications', event.target.value)}
                   placeholder="For eksempel React, SQL, Figma, API, analyse. Skill med komma."
+                  aria-invalid={Boolean(errors.professionalQualifications)}
                 />
                 {errors.professionalQualifications ? <p className="error-text">{errors.professionalQualifications}</p> : null}
               </label>
@@ -951,10 +994,11 @@ export default function Chatbot({ userRole }) {
               <label>
                 Lokasjon *
                 <input
-                  className="case-input"
+                  className={`case-input ${errors.location ? 'case-input-error' : ''}`}
                   value={form.location}
                   onChange={(event) => updateField('location', event.target.value)}
                   placeholder="Halden, Oslo eller Remote"
+                  aria-invalid={Boolean(errors.location)}
                 />
                 {errors.location ? <p className="error-text">{errors.location}</p> : null}
               </label>
@@ -962,10 +1006,11 @@ export default function Chatbot({ userRole }) {
               <label>
                 Startdato *
                 <input
-                  className="case-input"
+                  className={`case-input ${errors.startDate ? 'case-input-error' : ''}`}
                   type="date"
                   value={form.startDate}
                   onChange={(event) => updateField('startDate', event.target.value)}
+                  aria-invalid={Boolean(errors.startDate)}
                 />
                 {errors.startDate ? <p className="error-text">{errors.startDate}</p> : null}
               </label>
@@ -973,10 +1018,11 @@ export default function Chatbot({ userRole }) {
               <label>
                 Sluttdato *
                 <input
-                  className="case-input"
+                  className={`case-input ${errors.endDate ? 'case-input-error' : ''}`}
                   type="date"
                   value={form.endDate}
                   onChange={(event) => updateField('endDate', event.target.value)}
+                  aria-invalid={Boolean(errors.endDate)}
                 />
                 {errors.endDate ? <p className="error-text">{errors.endDate}</p> : null}
               </label>
@@ -1017,60 +1063,8 @@ export default function Chatbot({ userRole }) {
               </label> */}
             </div>
 
-            {revisionSuggestions.length > 0 ? (
-              <>
-                <h3 className="section-title-top">Endringer etter første utkast</h3>
-                <p className="muted case-panel-top-copy">
-                  Velg et forslag eller skriv egne endringer i feltet "Revisjonsinstruksjon". Send deretter utkastet tilbake til AI.
-                </p>
-                <div className="case-chip-row">
-                  {revisionSuggestions.map((suggestion) => (
-                    <button
-                      type="button"
-                      key={suggestion}
-                      className="case-chip"
-                      onClick={() => handleApplySuggestion(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </section>
-
-          <section className="case-panel preview case-preview-panel">
-            <h2>AI-vurdering og utkast</h2>
-            <p className="muted case-panel-top-copy">
-              Systemet bruker forventninger og kvalifikasjoner for å finne hva som er viktigst i kravbildet, uten å matche mot en bestemt student under utkastskrivingen.
-            </p>
-
-            <div className="analysis-grid">
-              <div className="metric-card">
-                <strong>{classification.type}</strong>
-                <span>{classification.reason}</span>
-              </div>
-              <div className="metric-card">
-                <strong>{requirementAnalysis.expectationCoverage}%</strong>
-                <span>Forventningsdekning</span>
-              </div>
-              <div className="metric-card">
-                <strong>{parseList(preparedForm.professionalQualifications).length}</strong>
-                <span>Faglige krav</span>
-              </div>
-              <div className="metric-card">
-                <strong>{parseList(preparedForm.personalQualifications).length}</strong>
-                <span>Personlige krav</span>
-              </div>
-            </div>
-
             <div className="case-section-top">
-              <h3>Viktigste kvalifikasjon</h3>
-              <p className="muted">{requirementAnalysis.mostImportantQualification}</p>
-            </div>
-
-            <div className="case-section-top">
-              <h3>Relevante fag for saken</h3>
+              <h3>Relevant fag for saken</h3>
               <div className="case-chip-row">
                 {classification.relevantSubjects.map((subject) => (
                   <span key={subject} className="case-chip case-chip-static">
@@ -1081,13 +1075,16 @@ export default function Chatbot({ userRole }) {
             </div>
 
             <div className="case-section-top">
-              <h3>Prioriterte kvalifikasjoner</h3>
-              <p className="muted">
-                {requirementAnalysis.rankedQualifications.length > 0
-                  ? requirementAnalysis.rankedQualifications.map((item) => `${item.name} (${item.weight})`).join(', ')
-                  : 'Ingen faglige kvalifikasjoner er lagt inn ennå.'}
-              </p>
+              <h3>Viktigste kvalifikasjon</h3>
+              <p className="muted">{requirementAnalysis.mostImportantQualification}</p>
             </div>
+          </section>
+
+          <section className="case-panel preview case-preview-panel">
+            <h2>AI-utkast</h2>
+            <p className="muted case-panel-top-copy">
+              Her vises kun teksten AI-en skriver. Du kan gi revisjonsinstruksjoner og oppdatere utkastet før publisering.
+            </p>
 
             <div className="case-section-top-lg">
               <h3>Utkast</h3>
@@ -1106,9 +1103,6 @@ export default function Chatbot({ userRole }) {
                     Send endringer til AI
                   </button>
                 ) : null}
-                <button type="button" className="secondary-action" onClick={handlePublish}>
-                  Publiser sak
-                </button>
               </div>
               <div className="case-output">
                 {form.generatedAd ? (
@@ -1119,11 +1113,26 @@ export default function Chatbot({ userRole }) {
                   </p>
                 )}
               </div>
-            </div>
-
-            <div className="case-section-top-lg">
-              <h3>Fagområder som systemet anbefaler</h3>
-              <p className="muted">{requirementAnalysis.recommendedSubjects.join(', ')}</p>
+              {revisionSuggestions.length > 0 ? (
+                <div className="case-section-top">
+                  <h3>Forslag til endringer</h3>
+                  <p className="muted case-panel-top-copy">
+                    Velg et forslag eller skriv egne endringer i feltet over, og send deretter utkastet tilbake til AI.
+                  </p>
+                  <div className="case-chip-row">
+                    {revisionSuggestions.map((suggestion) => (
+                      <button
+                        type="button"
+                        key={suggestion}
+                        className="case-chip"
+                        onClick={() => handleApplySuggestion(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </section>
         </div>

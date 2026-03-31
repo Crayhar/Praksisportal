@@ -11,7 +11,8 @@ function mapPublishedCaseToInternship(item) {
   return {
     id: item.id,
     title: item.title,
-    company: item.logo || 'Bedrift',
+    company: item.companyName || item.logo || 'Bedrift',
+    companyName: item.companyName || item.logo || 'Bedrift',
     location: item.location,
     description: item.taskDescription,
     startDate: item.startDate,
@@ -30,6 +31,17 @@ function mapPublishedCaseToInternship(item) {
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
     startWithin: item.startWithin || '',
+    generatedAd: item.generatedAd || item.generatedAdData?.markdown || '',
+    generatedAdData: item.generatedAdData || null,
+    website: item.website || '',
+    companySummary: item.generatedAdData?.companySummary || item.companyProfileDescription || item.companyQualifications || '',
+    companyDescription: item.companyProfileDescription || item.companyQualifications || '',
+    companyQualifications: item.companyQualifications
+      ? item.companyQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [],
+    workAreas: item.workAreas || [],
+    industry: item.industry || '',
+    companySize: item.companySize || '',
   };
 }
 
