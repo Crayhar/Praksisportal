@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../App';
 import LLM from '@themaximalist/llm.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,6 +18,7 @@ import {
   parseList,
 } from '../utils/caseMatching';
 import { loadStoredJson, saveStoredJson } from '../utils/storage';
+import { cases as casesAPI, companyProfile as companyProfileAPI } from '../utils/api';
 
 const ROLE_OPTIONS = {
   frontend: 'Frontendutvikler',
@@ -425,28 +428,58 @@ async function generateAdWithAi(form, classification, requirementAnalysis, mode 
 }
 
 export default function Chatbot({ userRole }) {
-  const isCompany = userRole === 'company';
-  const [companyProfile] = useState(() => loadStoredJson(STORAGE_KEYS.companyProfile, defaultCompanyProfile));
-  const [drafts, setDrafts] = useState(() => loadStoredJson(STORAGE_KEYS.caseDrafts, defaultDrafts));
-  const [publishedCases, setPublishedCases] = useState(() =>
-    loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases)
-  );
-  const [form, setForm] = useState(() => {
-    const storedDrafts = loadStoredJson(STORAGE_KEYS.caseDrafts, defaultDrafts);
-    return storedDrafts[0] || createEmptyCaseDraft();
-  });
+  const navigate = useNavigate();
+  const { userRole: authRole } = useContext(AuthContext);
+  const isCompany = authRole === 'company';
+
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [drafts, setDrafts] = useState([]);
+  const [publishedCases, setPublishedCases] = useState([]);
+  const [form, setForm] = useState(createEmptyCaseDraft());
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [initializing, setInitializing] = useState(true);
   const hasGeneratedDraft = Boolean(form.generatedAd);
 
+  // Load data from API on mount
   useEffect(() => {
-    saveStoredJson(STORAGE_KEYS.caseDrafts, drafts);
-  }, [drafts]);
+    const loadData = async () => {
+      try {
+        setInitializing(true);
+        if (isCompany) {
+          const company = await companyProfileAPI.get();
+          setCompanyProfile(company);
+          const draftList = await casesAPI.listDrafts();
+          setDrafts(draftList);
+          if (draftList.length > 0) {
+            setForm(draftList[0]);
+          } else {
+            setForm(createEmptyCaseDraft({
+              website: company.website,
+              logo: company.logo,
+              companyQualifications: company.description,
+            }));
+          }
+        }
+        const published = await casesAPI.listPublished();
+        setPublishedCases(published);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setCompanyProfile(defaultCompanyProfile);
+        setDrafts(defaultDrafts);
+        setPublishedCases(defaultPublishedCases);
+      } finally {
+        setInitializing(false);
+      }
+    };
 
-  useEffect(() => {
-    saveStoredJson(STORAGE_KEYS.publishedCases, publishedCases);
-  }, [publishedCases]);
+    if (isCompany) {
+      loadData();
+    } else {
+      setInitializing(false);
+    }
+  }, [isCompany]);
 
   const preparedForm = useMemo(() => prepareCaseForm(form), [form]);
   const classification = useMemo(() => classifyCase(preparedForm), [preparedForm]);
@@ -508,15 +541,28 @@ export default function Chatbot({ userRole }) {
     });
   };
 
-  const syncCurrentDraft = (nextForm) => {
-    setDrafts((prev) => {
-      const draftExists = prev.some((draft) => draft.id === nextForm.id);
-      if (!draftExists) {
-        return [nextForm, ...prev];
+  const syncCurrentDraft = async (nextForm) => {
+    try {
+      if (nextForm.id && drafts.some(d => d.id === nextForm.id)) {
+        // Update existing draft
+        await casesAPI.updateDraft(nextForm.id, nextForm);
+      } else if (isCompany) {
+        // Create new draft
+        const created = await casesAPI.createDraft(nextForm);
+        nextForm.id = created.id;
       }
 
-      return prev.map((draft) => (draft.id === nextForm.id ? nextForm : draft));
-    });
+      setDrafts((prev) => {
+        const draftExists = prev.some((draft) => draft.id === nextForm.id);
+        if (!draftExists) {
+          return [nextForm, ...prev];
+        }
+        return prev.map((draft) => (draft.id === nextForm.id ? nextForm : draft));
+      });
+    } catch (err) {
+      console.error('Failed to sync draft:', err);
+      setStatusMessage('Kunne ikke lagre utkast. Sjekk internettforbindelsen.');
+    }
   };
 
   const handleCreateNewDraft = () => {
@@ -640,7 +686,7 @@ export default function Chatbot({ userRole }) {
     }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     const nextErrors = validateForm(preparedForm);
     setErrors(nextErrors);
 
@@ -649,37 +695,61 @@ export default function Chatbot({ userRole }) {
       return;
     }
 
-    const publishedCase = {
-      ...preparedForm,
-      title: preparedForm.title || preparedForm.taskFocus,
-      classification,
-      requirementAnalysis,
-      topQualification: requirementAnalysis.mostImportantQualification,
-      suggestions: revisionSuggestions,
-      status: 'published',
-      publishedAt: new Date().toISOString(),
-      generatedAd: form.generatedAd || buildFallbackAd(preparedForm, classification, requirementAnalysis),
-      generatedAdData:
-        form.generatedAdData ||
-        buildStructuredFallback(
-          preparedForm,
-          classification,
-          requirementAnalysis,
-          form.generatedAd || buildFallbackAd(preparedForm, classification, requirementAnalysis)
-        ),
-    };
+    try {
+      setLoading(true);
 
-    setPublishedCases((prev) => [publishedCase, ...prev.filter((item) => item.id !== publishedCase.id)]);
-    setDrafts((prev) => prev.filter((draft) => draft.id !== publishedCase.id));
-    setForm(
-      createEmptyCaseDraft({
-        website: companyProfile.website,
-        logo: companyProfile.logo,
-        companyQualifications: companyProfile.description,
-      })
-    );
-    setStatusMessage('Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.');
+      const publishedCase = {
+        ...preparedForm,
+        title: preparedForm.title || preparedForm.taskFocus,
+        classification,
+        requirementAnalysis,
+        topQualification: requirementAnalysis.mostImportantQualification,
+        suggestions: revisionSuggestions,
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        generatedAd: form.generatedAd || buildFallbackAd(preparedForm, classification, requirementAnalysis),
+        generatedAdData:
+          form.generatedAdData ||
+          buildStructuredFallback(
+            preparedForm,
+            classification,
+            requirementAnalysis,
+            form.generatedAd || buildFallbackAd(preparedForm, classification, requirementAnalysis)
+          ),
+      };
+
+      // Publish via API
+      if (form.id) {
+        await casesAPI.publishDraft(form.id);
+      }
+
+      setPublishedCases((prev) => [publishedCase, ...prev.filter((item) => item.id !== publishedCase.id)]);
+      setDrafts((prev) => prev.filter((draft) => draft.id !== publishedCase.id));
+      setForm(
+        createEmptyCaseDraft({
+          website: companyProfile?.website,
+          logo: companyProfile?.logo,
+          companyQualifications: companyProfile?.description,
+        })
+      );
+      setStatusMessage('Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.');
+    } catch (err) {
+      console.error('Failed to publish:', err);
+      setStatusMessage('Kunne ikke publisere saken. Prøv igjen.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (initializing) {
+    return (
+      <main className="chatbot-locked-shell">
+        <section className="profile-section">
+          <p style={{ textAlign: 'center', padding: '20px' }}>Laster...</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!isCompany) {
     return (
@@ -731,11 +801,11 @@ export default function Chatbot({ userRole }) {
         <aside className="case-panel">
           <h2>Bedrift og utkast</h2>
           <p className="muted case-panel-top-copy">
-            Registrert som {companyProfile.name}. Uferdige sessions lagres lokalt slik at dere kan fortsette senere.
+            Registrert som {companyProfile?.name || 'Bedrift'}. Uferdige sessions lagres i databasen slik at dere kan fortsette senere.
           </p>
 
           <div className="metric-card case-panel-top-gap">
-            <strong>{companyProfile.expectationsQualityScore}%</strong>
+            <strong>{companyProfile?.expectations_quality_score || '0'}%</strong>
             <span>Estimert kvalitet på forventningsgrunnlaget i bedriftsprofilen.</span>
           </div>
 
