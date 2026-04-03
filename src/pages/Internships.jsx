@@ -1,13 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { internships } from '../data/internships';
+import { AuthContext } from '../App';
 import Footer from '../components/Footer';
 import InternshipDetailsModal from '../components/InternshipDetailsModal';
-import { STORAGE_KEYS, defaultPublishedCases, defaultStudentProfile } from '../data/portalData';
+import { defaultStudentProfile } from '../data/portalData';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
-import { loadStoredJson } from '../utils/storage';
+import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
 
 function mapPublishedCaseToInternship(item) {
+  // Handle professionalQualifications - could be array (from API) or string (from old data)
+  const qualifications = Array.isArray(item.professionalQualifications)
+    ? item.professionalQualifications
+    : typeof item.professionalQualifications === 'string'
+      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [];
+
   return {
     id: item.id,
     title: item.title,
@@ -19,13 +26,15 @@ function mapPublishedCaseToInternship(item) {
     maxHours: item.maxHours,
     salaryType: item.salaryType,
     compensationAmount: item.compensationAmount,
-    skills: item.professionalQualifications
-      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [],
+    skills: qualifications,
     internshipCredits: true,
     classification: item.classification,
-    professionalQualifications: item.professionalQualifications || '',
-    personalQualifications: item.personalQualifications || '',
+    professionalQualifications: Array.isArray(item.professionalQualifications)
+      ? item.professionalQualifications.join(', ')
+      : item.professionalQualifications || '',
+    personalQualifications: Array.isArray(item.personalQualifications)
+      ? item.personalQualifications.join(', ')
+      : item.personalQualifications || '',
     assignmentContext: item.assignmentContext || item.taskDescription,
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
@@ -56,19 +65,63 @@ function mapInternshipToCaseLike(internship) {
 export default function Internships({ userRole }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { userRole: authRole } = useContext(AuthContext);
+  const isCompany = authRole === 'company';
+  const isStudent = authRole === 'student';
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState(isStudent ? 'match-high' : 'newest');
   const [selectedInternship, setSelectedInternship] = useState(null);
-  const isCompany = userRole === 'company';
-  const isStudent = userRole === 'student';
-  const studentProfile = useMemo(
-    () => loadStoredJson(STORAGE_KEYS.studentProfile, defaultStudentProfile),
-    []
-  );
-  const publishedCases = useMemo(
-    () => loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases).map(mapPublishedCaseToInternship),
-    []
-  );
-  const internshipFeed = useMemo(() => [...publishedCases, ...internships], [publishedCases]);
+  const [studentProfile, setStudentProfile] = useState(defaultStudentProfile);
+  const [publishedCases, setPublishedCases] = useState([]);
+
+  // Fetch student profile and published cases from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        if (isStudent) {
+          const profileData = await studentProfileAPI.get();
+          // Convert API response skills format to UI format
+          const skills = profileData.skills?.map(s => ({
+            name: s.name,
+            level: s.level || 3
+          })) || [];
+
+          const formattedProfile = {
+            ...profileData,
+            skills,
+            firstName: profileData.firstName || '',
+            lastName: profileData.lastName || '',
+            email: profileData.email || '',
+            phone: profileData.phone || '',
+            school: profileData.school || '',
+            field: profileData.field || '',
+            degreeLevel: profileData.degree_level || '',
+            graduationYear: profileData.graduation_year,
+            location: profileData.location || '',
+            notificationThreshold: profileData.notification_threshold || 65,
+          };
+          console.log('Updated student profile:', formattedProfile);
+          setStudentProfile(formattedProfile);
+        } else {
+          setStudentProfile(defaultStudentProfile);
+        }
+
+        const casesData = await casesAPI.listPublished();
+        console.log('Fetched published cases:', casesData);
+        const mapped = casesData.map(mapPublishedCaseToInternship);
+        setPublishedCases(mapped);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        // Fallback to defaults on error
+        setStudentProfile(defaultStudentProfile);
+        setPublishedCases([]);
+      }
+    };
+
+    loadData();
+  }, [isStudent, location.pathname]);
+  const internshipFeed = useMemo(() => publishedCases, [publishedCases]);
 
   const getCompensationSummary = (internship) =>
     internship.salaryType === 'hourly'
@@ -77,13 +130,66 @@ export default function Internships({ userRole }) {
 
   const filteredInternships = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return internshipFeed.filter(
+    let filtered = internshipFeed.filter(
       (internship) =>
         internship.title.toLowerCase().includes(query) ||
         internship.company.toLowerCase().includes(query) ||
         internship.location.toLowerCase().includes(query)
     );
-  }, [internshipFeed, searchQuery]);
+
+    // Apply sorting
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case 'title-asc':
+        sorted.sort((a, b) => a.title.localeCompare(b.title, 'no'));
+        break;
+      case 'title-desc':
+        sorted.sort((a, b) => b.title.localeCompare(a.title, 'no'));
+        break;
+      case 'newest':
+        // Published cases are newer, so they come first
+        sorted.sort((a, b) => {
+          const aIsPublished = publishedCases.some(c => c.id === a.id);
+          const bIsPublished = publishedCases.some(c => c.id === b.id);
+          if (aIsPublished && !bIsPublished) return -1;
+          if (!aIsPublished && bIsPublished) return 1;
+          return 0;
+        });
+        break;
+      case 'oldest':
+        // Static internships come first
+        sorted.sort((a, b) => {
+          const aIsPublished = publishedCases.some(c => c.id === a.id);
+          const bIsPublished = publishedCases.some(c => c.id === b.id);
+          if (!aIsPublished && bIsPublished) return -1;
+          if (aIsPublished && !bIsPublished) return 1;
+          return 0;
+        });
+        break;
+      case 'match-high':
+        if (isStudent) {
+          sorted.sort((a, b) => {
+            const aScore = scoreCaseAgainstStudent(mapInternshipToCaseLike(a), studentProfile).totalScore;
+            const bScore = scoreCaseAgainstStudent(mapInternshipToCaseLike(b), studentProfile).totalScore;
+            return bScore - aScore;
+          });
+        }
+        break;
+      case 'match-low':
+        if (isStudent) {
+          sorted.sort((a, b) => {
+            const aScore = scoreCaseAgainstStudent(mapInternshipToCaseLike(a), studentProfile).totalScore;
+            const bScore = scoreCaseAgainstStudent(mapInternshipToCaseLike(b), studentProfile).totalScore;
+            return aScore - bScore;
+          });
+        }
+        break;
+      default:
+        break;
+    }
+
+    return sorted;
+  }, [internshipFeed, searchQuery, sortBy, isStudent, studentProfile, publishedCases]);
   const selectedFromUrl = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const selectedId = params.get('selected');
@@ -131,18 +237,41 @@ export default function Internships({ userRole }) {
       {/* Internships List */}
       <section className="latest-internships">
         <div className="container">
-          {/* Search Input */}
-          <input
-            type="text"
-            className="search-input"
-            placeholder={
-              isCompany
-                ? 'Søk i markedet etter tittel, bedrift eller sted...'
-                : 'Søk praksisplasser etter tittel, bedrift eller sted...'
-            }
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          {/* Search and Sort Controls */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              className="search-input"
+              placeholder={
+                isCompany
+                  ? 'Søk i markedet etter tittel, bedrift eller sted...'
+                  : 'Søk praksisplasser etter tittel, bedrift eller sted...'
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ flex: '1 1 300px', minWidth: '300px' }}
+            />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                padding: '10px 15px',
+                borderRadius: '4px',
+                border: '1px solid #ddd',
+                backgroundColor: '#fff',
+                cursor: 'pointer',
+                minWidth: '200px',
+                flex: '0 1 auto',
+              }}
+            >
+              <option value="newest">Nyeste først</option>
+              <option value="oldest">Eldste først</option>
+              <option value="title-asc">Tittel (A-Z)</option>
+              <option value="title-desc">Tittel (Z-A)</option>
+              {isStudent && <option value="match-high">Best match først</option>}
+              {isStudent && <option value="match-low">Lavest match først</option>}
+            </select>
+          </div>
 
           {/* Internship Cards */}
           <div className="internship-list">
@@ -152,6 +281,15 @@ export default function Internships({ userRole }) {
                   const matchSummary = isStudent
                     ? scoreCaseAgainstStudent(mapInternshipToCaseLike(internship), studentProfile)
                     : null;
+
+                  if (internship.title?.includes('Full Stack') || internship.title?.includes('Fullstack')) {
+                    console.log('Full Stack internship match calculation:', {
+                      title: internship.title,
+                      matchScore: matchSummary?.totalScore,
+                      caseLike: mapInternshipToCaseLike(internship),
+                      studentProfile: studentProfile
+                    });
+                  }
 
                   return (
                     <div

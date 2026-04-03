@@ -4,7 +4,7 @@ import { pool } from "../db.js";
 export const getStudentProfile = async (req, res) => {
   try {
     const [profiles] = await pool.query(
-      "SELECT sp.*, u.first_name, u.last_name, u.email FROM student_profiles sp JOIN users u ON sp.user_id = u.id WHERE sp.user_id = ?",
+      "SELECT sp.*, u.first_name, u.last_name, u.email, u.phone FROM student_profiles sp JOIN users u ON sp.user_id = u.id WHERE sp.user_id = ?",
       [req.userId]
     );
 
@@ -60,6 +60,7 @@ export const getStudentProfile = async (req, res) => {
       firstName: profile.first_name,
       lastName: profile.last_name,
       email: profile.email,
+      phone: profile.phone,
       skills: skills.map((s) => ({
         name: s.skill_name,
         level: s.proficiency_level,
@@ -74,7 +75,15 @@ export const getStudentProfile = async (req, res) => {
 
 export const updateStudentProfile = async (req, res) => {
   try {
-    const { school, field, degreeLevel, graduationYear, location, bio, headline, notificationThreshold } = req.body;
+    const { school, field, degreeLevel, graduationYear, location, bio, headline, notificationThreshold, phone } = req.body;
+
+    // Update phone in users table if provided
+    if (phone !== undefined) {
+      await pool.query(
+        "UPDATE users SET phone = ? WHERE id = ?",
+        [phone, req.userId]
+      );
+    }
 
     await pool.query(
       "UPDATE student_profiles SET school = ?, field = ?, degree_level = ?, graduation_year = ?, location = ?, bio = ?, headline = ?, notification_threshold = ? WHERE user_id = ?",

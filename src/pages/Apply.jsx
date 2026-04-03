@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../App';
 import Footer from '../components/Footer';
 import { internships } from '../data/internships';
 import {
@@ -9,8 +10,16 @@ import {
 } from '../data/portalData';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { loadStoredJson } from '../utils/storage';
+import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
 
 function mapPublishedCaseToInternship(item) {
+  // Handle professionalQualifications - could be array (from API) or string (from old data)
+  const qualifications = Array.isArray(item.professionalQualifications)
+    ? item.professionalQualifications
+    : typeof item.professionalQualifications === 'string'
+      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [];
+
   return {
     id: item.id,
     title: item.title,
@@ -22,11 +31,13 @@ function mapPublishedCaseToInternship(item) {
     maxHours: item.maxHours,
     salaryType: item.salaryType,
     compensationAmount: item.compensationAmount,
-    skills: item.professionalQualifications
-      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [],
-    professionalQualifications: item.professionalQualifications || '',
-    personalQualifications: item.personalQualifications || '',
+    skills: qualifications,
+    professionalQualifications: Array.isArray(item.professionalQualifications)
+      ? item.professionalQualifications.join(', ')
+      : item.professionalQualifications || '',
+    personalQualifications: Array.isArray(item.personalQualifications)
+      ? item.personalQualifications.join(', ')
+      : item.personalQualifications || '',
     assignmentContext: item.assignmentContext || item.taskDescription,
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
@@ -54,15 +65,70 @@ function mapInternshipToCaseLike(internship) {
 export default function Apply({ userRole }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isCompany = userRole === 'company';
-  const studentProfile = useMemo(
-    () => loadStoredJson(STORAGE_KEYS.studentProfile, defaultStudentProfile),
-    []
-  );
-  const publishedCases = useMemo(
-    () => loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases).map(mapPublishedCaseToInternship),
-    []
-  );
+  const { userRole: authRole, user } = useContext(AuthContext);
+  const isCompany = authRole === 'company';
+
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [publishedCases, setPublishedCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch student profile and published cases from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        if (authRole === 'student') {
+          const profileData = await studentProfileAPI.get();
+          console.log('Loaded student profile:', profileData);
+          // Format the API response to match the form structure
+          const formattedProfile = {
+            ...profileData,
+            firstName: profileData.firstName || '',
+            lastName: profileData.lastName || '',
+            email: profileData.email || '',
+            phone: profileData.phone || '',
+            headline: profileData.headline || '',
+            bio: profileData.bio || '',
+            school: profileData.school || '',
+            field: profileData.field || '',
+            degreeLevel: profileData.degree_level || '',
+            graduationYear: profileData.graduation_year,
+            location: profileData.location || '',
+            notificationThreshold: profileData.notification_threshold || 65,
+            skills: profileData.skills || [],
+          };
+          console.log('Formatted profile:', formattedProfile);
+          setStudentProfile(formattedProfile);
+        } else {
+          // For non-logged-in or company users, use default
+          setStudentProfile(defaultStudentProfile);
+        }
+        const casesData = await casesAPI.listPublished();
+        setPublishedCases(casesData.map(mapPublishedCaseToInternship));
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        // For students, allow empty form instead of blocking them
+        if (authRole === 'student') {
+          console.warn('API failed for student, using empty form');
+          setStudentProfile({
+            firstName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            school: '',
+            skills: [],
+          });
+        } else if (!authRole) {
+          setStudentProfile(defaultStudentProfile);
+        }
+        setPublishedCases([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [authRole]);
   const internshipFeed = useMemo(() => [...publishedCases, ...internships], [publishedCases]);
   const selectedId = useMemo(() => new URLSearchParams(location.search).get('selected'), [location.search]);
   const selectedInternship = useMemo(
@@ -75,21 +141,39 @@ export default function Apply({ userRole }) {
   );
 
   const [form, setForm] = useState({
-    fullName: `${studentProfile.firstName} ${studentProfile.lastName}`,
-    email: studentProfile.email,
-    phone: studentProfile.phone,
-    school: studentProfile.school,
-    position: selectedInternship?.title || '',
+    fullName: '',
+    email: '',
+    phone: '',
+    school: '',
+    position: '',
     coverLetter: '',
-    experience: studentProfile.skills
-      .slice()
-      .sort((left, right) => right.level - left.level)
-      .slice(0, 4)
-      .map((skill) => `${skill.name} (${skill.level}/5)`)
-      .join(', '),
+    experience: '',
     availability: false,
     terms: false,
   });
+
+  // Update form when studentProfile or selectedInternship changes
+  useEffect(() => {
+    if (!loading && studentProfile) {
+      console.log('Updating form with studentProfile:', studentProfile);
+      setForm({
+        fullName: `${studentProfile.firstName || ''} ${studentProfile.lastName || ''}`.trim(),
+        email: studentProfile.email || '',
+        phone: studentProfile.phone || '',
+        school: studentProfile.school || '',
+        position: selectedInternship?.title || '',
+        coverLetter: '',
+        experience: (studentProfile.skills || [])
+          .slice()
+          .sort((left, right) => (right.level || 0) - (left.level || 0))
+          .slice(0, 4)
+          .map((skill) => `${skill.name} (${skill.level || 0}/5)`)
+          .join(', '),
+        availability: false,
+        terms: false,
+      });
+    }
+  }, [studentProfile, selectedInternship, loading]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -109,6 +193,19 @@ export default function Apply({ userRole }) {
 
     navigate('/profile');
   };
+
+  if (loading) {
+    return (
+      <main>
+        <section className="hero hero-apply">
+          <div className="hero-content">
+            <h1>Søk på praksisplass</h1>
+            <p>Laster søknadskjema...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   if (isCompany) {
     return (
@@ -131,6 +228,19 @@ export default function Apply({ userRole }) {
           </div>
         </section>
         <Footer />
+      </main>
+    );
+  }
+
+  if (!studentProfile && !authRole) {
+    return (
+      <main>
+        <section className="hero hero-apply">
+          <div className="hero-content">
+            <h1>Søk på praksisplass</h1>
+            <p>Logg inn som student for å sende søknad.</p>
+          </div>
+        </section>
       </main>
     );
   }
@@ -261,7 +371,7 @@ export default function Apply({ userRole }) {
                 </label>
 
                 <label className="full">
-                  Hvilken annonse søker du pa? *
+                  Hvilken annonse søker du på? *
                   <select
                     className="apply-select"
                     value={form.position}

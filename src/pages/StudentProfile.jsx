@@ -151,10 +151,63 @@ function SkillEditor({ skills, onAdd, onRemove, onLevelChange, loading }) {
   );
 }
 
-function mapPublishedCaseToMatch(item, student) {
+function mapPublishedCaseToInternship(item) {
+  // Handle professionalQualifications - could be array (from API) or string (from old data)
+  const qualifications = Array.isArray(item.professionalQualifications)
+    ? item.professionalQualifications
+    : typeof item.professionalQualifications === 'string'
+      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [];
+
   return {
-    ...item,
-    scoreSummary: scoreCaseAgainstStudent(item, student),
+    id: item.id,
+    title: item.title,
+    company: item.company || 'Bedrift',
+    location: item.location,
+    description: item.taskDescription,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    maxHours: item.maxHours,
+    salaryType: item.salaryType,
+    compensationAmount: item.compensationAmount,
+    skills: qualifications,
+    internshipCredits: true,
+    classification: item.classification,
+    professionalQualifications: Array.isArray(item.professionalQualifications)
+      ? item.professionalQualifications.join(', ')
+      : item.professionalQualifications || '',
+    personalQualifications: Array.isArray(item.personalQualifications)
+      ? item.personalQualifications.join(', ')
+      : item.personalQualifications || '',
+    assignmentContext: item.assignmentContext || item.taskDescription,
+    deliveries: item.deliveries || '',
+    expectations: item.expectations || '',
+  };
+}
+
+function mapInternshipToCaseLike(internship) {
+  return {
+    title: internship.title,
+    taskFocus: internship.title,
+    assignmentContext: internship.assignmentContext || internship.description,
+    taskDescription: internship.description,
+    deliveries: internship.deliveries || '',
+    expectations: internship.expectations || '',
+    professionalQualifications: internship.professionalQualifications || internship.skills.join(', '),
+    personalQualifications: internship.personalQualifications || '',
+    startDate: internship.startDate,
+    endDate: internship.endDate,
+    maxHours: internship.maxHours,
+    location: internship.location,
+    technicalTerms: internship.skills.join(', '),
+  };
+}
+
+function mapPublishedCaseToMatch(item, student) {
+  const internship = mapPublishedCaseToInternship(item);
+  return {
+    ...internship,
+    scoreSummary: scoreCaseAgainstStudent(mapInternshipToCaseLike(internship), student),
   };
 }
 
@@ -325,6 +378,30 @@ export default function StudentProfile({ userRole }) {
         // Save all skills
         for (const skill of editData.skills) {
           await studentProfile.addSkill(skill.name, skill.level);
+        }
+
+        // Save all interests
+        // Map between frontend field names and backend interest_type values
+        const interestMappings = {
+          professionalInterests: 'professional_interest',
+          personalCharacteristics: 'personal_characteristic',
+          currentSubjects: 'current_subject',
+          completedSubjects: 'completed_subject',
+          preferredLocations: 'preferred_location',
+        };
+
+        // Save new interests
+        for (const [fieldName, interestType] of Object.entries(interestMappings)) {
+          const interests = editData[fieldName] || [];
+          const originalInterests = student[fieldName] || [];
+
+          // Add new interests that weren't there before
+          const newInterests = interests.filter(
+            (item) => !originalInterests.includes(item)
+          );
+          for (const interest of newInterests) {
+            await studentProfile.addInterest(interestType, interest);
+          }
         }
       }
       setIsEditing(false);
@@ -568,11 +645,29 @@ export default function StudentProfile({ userRole }) {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Studieprogram</label>
+                      <label>Universitet / skole</label>
                       <input
                         type="text"
-                        value={editData.field}
-                        onChange={(event) => updateStudentField('field', event.target.value)}
+                        value={editData.school || ''}
+                        onChange={(event) => updateStudentField('school', event.target.value)}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Grad nivå</label>
+                      <input
+                        type="text"
+                        value={editData.degreeLevel || ''}
+                        onChange={(event) => updateStudentField('degreeLevel', event.target.value)}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Graduerings år</label>
+                      <input
+                        type="number"
+                        value={editData.graduationYear || ''}
+                        onChange={(event) => updateStudentField('graduationYear', Number(event.target.value) || null)}
                         disabled={saving}
                       />
                     </div>
@@ -657,17 +752,55 @@ export default function StudentProfile({ userRole }) {
             {notifications.length === 0 ? (
               <p>Ingen varsler akkurat nå. Sjekk alle <a href="/internships">praksisplassene</a>.</p>
             ) : (
-              <div className="notice-grid">
+              <div className="internship-list">
                 {notifications.map((notice) => (
-                  <div key={notice.id} className="notice-card">
-                    <div className="notice-header">
-                      <h3>{notice.title}</h3>
-                      {getStatusBadge(notice.scoreSummary.totalScore)}
-                    </div>
-                    <p className="notice-company">{notice.company_id}</p>
-                    <p className="notice-match">Match: {notice.scoreSummary.totalScore}%</p>
-                    <button className="btn btn-primary" onClick={() => openRecommendedAd(notice.id)}>
-                      Se detaljer
+                  <div
+                    key={notice.id}
+                    className="internship-card internship-card-clickable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openRecommendedAd(notice.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openRecommendedAd(notice.id);
+                      }
+                    }}
+                  >
+                    {notice.scoreSummary ? (
+                      <div className="match-summary">
+                        <div className="match-summary-copy">
+                          <p className="match-summary-kicker">Din match</p>
+                          <p className="match-summary-title">
+                            {notice.scoreSummary.rankedSkillMatches[0]?.name || notice.scoreSummary.topQualification}
+                          </p>
+                        </div>
+                        <div className="match-score match-score-md">
+                          <div className="match-score-inner">
+                            <strong className="match-score-value match-score-value-md">{notice.scoreSummary.totalScore}%</strong>
+                            <span className="match-score-caption">match</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    <h3>{notice.title}</h3>
+                    <p className="company">🏢 {notice.company}</p>
+                    <p className="location">📍 {notice.location}</p>
+                    <p>{notice.description}</p>
+                    <p className="internship-meta">
+                      <strong>Periode:</strong> {notice.startDate} til {notice.endDate}
+                    </p>
+                    <p className="internship-meta">
+                      <strong>Maks timer:</strong> {notice.maxHours}
+                    </p>
+                    <p className="internship-meta">
+                      <strong>Kompensasjon:</strong>{' '}
+                      {notice.salaryType === 'hourly'
+                        ? `Timelønn: ${notice.compensationAmount} NOK/time`
+                        : `Fastpris: ${notice.compensationAmount} NOK`}
+                    </p>
+                    <button type="button" className="btn btn-primary btn-inline-small">
+                      Se mer info
                     </button>
                   </div>
                 ))}
