@@ -1,15 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../App';
 import Footer from '../components/Footer';
-import {
-  STORAGE_KEYS,
-  defaultCompanyProfile,
-  defaultDrafts,
-  defaultPublishedCases,
-  defaultStudentProfile,
-} from '../data/portalData';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
-import { loadStoredJson, saveStoredJson } from '../utils/storage';
+import { studentProfile, companyProfile, cases as casesAPI } from '../utils/api';
 
 function formatDate(dateString) {
   if (!dateString) {
@@ -35,7 +29,7 @@ function ChipList({ items }) {
   );
 }
 
-function TagEditor({ label, items, onAdd, onRemove, placeholder }) {
+function TagEditor({ label, items, onAdd, onRemove, placeholder, loading }) {
   const [value, setValue] = useState('');
 
   return (
@@ -48,6 +42,7 @@ function TagEditor({ label, items, onAdd, onRemove, placeholder }) {
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
+          disabled={loading}
         />
         <button
           type="button"
@@ -58,6 +53,7 @@ function TagEditor({ label, items, onAdd, onRemove, placeholder }) {
             onAdd(trimmed);
             setValue('');
           }}
+          disabled={loading}
         >
           Legg til
         </button>
@@ -69,6 +65,7 @@ function TagEditor({ label, items, onAdd, onRemove, placeholder }) {
             type="button"
             onClick={() => onRemove(item)}
             className="tag-editor-chip"
+            disabled={loading}
           >
             {item} ×
           </button>
@@ -78,7 +75,7 @@ function TagEditor({ label, items, onAdd, onRemove, placeholder }) {
   );
 }
 
-function SkillEditor({ skills, onAdd, onRemove, onLevelChange }) {
+function SkillEditor({ skills, onAdd, onRemove, onLevelChange, loading }) {
   const [name, setName] = useState('');
   const [level, setLevel] = useState(3);
 
@@ -92,8 +89,14 @@ function SkillEditor({ skills, onAdd, onRemove, onLevelChange }) {
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="For eksempel React"
+          disabled={loading}
         />
-        <select className="skill-editor-field" value={level} onChange={(event) => setLevel(Number(event.target.value))}>
+        <select
+          className="skill-editor-field"
+          value={level}
+          onChange={(event) => setLevel(Number(event.target.value))}
+          disabled={loading}
+        >
           <option value={1}>1 - Nybegynner</option>
           <option value={2}>2 - Litt erfaring</option>
           <option value={3}>3 - God</option>
@@ -110,6 +113,7 @@ function SkillEditor({ skills, onAdd, onRemove, onLevelChange }) {
             setName('');
             setLevel(3);
           }}
+          disabled={loading}
         >
           Legg til
         </button>
@@ -127,10 +131,16 @@ function SkillEditor({ skills, onAdd, onRemove, onLevelChange }) {
               max="5"
               value={skill.level}
               onChange={(event) => onLevelChange(skill.name, Number(event.target.value))}
+              disabled={loading}
             />
             <div className="skill-editor-actions">
               <span>{skill.level}/5</span>
-              <button type="button" className="btn btn-secondary btn-small" onClick={() => onRemove(skill.name)}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-small"
+                onClick={() => onRemove(skill.name)}
+                disabled={loading}
+              >
                 Fjern
               </button>
             </div>
@@ -141,36 +151,151 @@ function SkillEditor({ skills, onAdd, onRemove, onLevelChange }) {
   );
 }
 
-function mapPublishedCaseToMatch(item, student) {
+function mapPublishedCaseToInternship(item) {
+  // Handle professionalQualifications - could be array (from API) or string (from old data)
+  const qualifications = Array.isArray(item.professionalQualifications)
+    ? item.professionalQualifications
+    : typeof item.professionalQualifications === 'string'
+      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [];
+
   return {
-    ...item,
-    scoreSummary: scoreCaseAgainstStudent(item, student),
+    id: item.id,
+    title: item.title,
+    company: item.company || 'Bedrift',
+    location: item.location,
+    description: item.taskDescription,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    maxHours: item.maxHours,
+    salaryType: item.salaryType,
+    compensationAmount: item.compensationAmount,
+    skills: qualifications,
+    internshipCredits: true,
+    classification: item.classification,
+    professionalQualifications: Array.isArray(item.professionalQualifications)
+      ? item.professionalQualifications.join(', ')
+      : item.professionalQualifications || '',
+    personalQualifications: Array.isArray(item.personalQualifications)
+      ? item.personalQualifications.join(', ')
+      : item.personalQualifications || '',
+    assignmentContext: item.assignmentContext || item.taskDescription,
+    deliveries: item.deliveries || '',
+    expectations: item.expectations || '',
+  };
+}
+
+function mapInternshipToCaseLike(internship) {
+  return {
+    title: internship.title,
+    taskFocus: internship.title,
+    assignmentContext: internship.assignmentContext || internship.description,
+    taskDescription: internship.description,
+    deliveries: internship.deliveries || '',
+    expectations: internship.expectations || '',
+    professionalQualifications: internship.professionalQualifications || internship.skills.join(', '),
+    personalQualifications: internship.personalQualifications || '',
+    startDate: internship.startDate,
+    endDate: internship.endDate,
+    maxHours: internship.maxHours,
+    location: internship.location,
+    technicalTerms: internship.skills.join(', '),
+  };
+}
+
+function mapPublishedCaseToMatch(item, student) {
+  const internship = mapPublishedCaseToInternship(item);
+  return {
+    ...internship,
+    scoreSummary: scoreCaseAgainstStudent(mapInternshipToCaseLike(internship), student),
   };
 }
 
 export default function StudentProfile({ userRole }) {
   const navigate = useNavigate();
-  const isCompany = userRole === 'company';
+  const { userRole: authRole } = useContext(AuthContext);
+  const isCompany = authRole === 'company';
 
-  const [student, setStudent] = useState(() => loadStoredJson(STORAGE_KEYS.studentProfile, defaultStudentProfile));
-  const [company, setCompany] = useState(() => loadStoredJson(STORAGE_KEYS.companyProfile, defaultCompanyProfile));
-  const [drafts] = useState(() => loadStoredJson(STORAGE_KEYS.caseDrafts, defaultDrafts));
-  const [publishedCases] = useState(() => loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases));
+  const [student, setStudent] = useState(null);
+  const [company, setCompany] = useState(null);
+  const [publishedCases, setPublishedCases] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState(student);
-  const [companyEditData, setCompanyEditData] = useState(company);
+  const [editData, setEditData] = useState(null);
+  const [companyEditData, setCompanyEditData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  const activeStudent = isEditing && !isCompany ? editData : student;
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (isCompany) {
+          const companyData = await companyProfile.get();
+          setCompany(companyData);
+          setCompanyEditData(companyData);
+        } else {
+          const studentData = await studentProfile.get();
+          // Convert API response skills format to UI format
+          const skills = studentData.skills.map(s => ({
+            name: s.name,
+            level: s.level || 3
+          }));
+
+          const formattedStudent = {
+            ...studentData,
+            skills,
+            firstName: studentData.firstName || '',
+            lastName: studentData.lastName || '',
+            email: studentData.email || '',
+            phone: studentData.phone || '',
+            headline: studentData.headline || '',
+            bio: studentData.bio || '',
+            school: studentData.school || '',
+            field: studentData.field || '',
+            degreeLevel: studentData.degree_level || '',
+            graduationYear: studentData.graduation_year,
+            location: studentData.location || '',
+            notificationThreshold: studentData.notification_threshold || 65,
+          };
+
+          setStudent(formattedStudent);
+          setEditData(formattedStudent);
+        }
+
+        const publishedCasesData = await casesAPI.listPublished();
+        setPublishedCases(publishedCasesData);
+      } catch (err) {
+        setError(err.message);
+        console.error('Failed to load profile:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [isCompany]);
+
+  const activeStudent = student && (isEditing && !isCompany ? editData : student);
   const caseMatches = useMemo(
-    () =>
-      publishedCases
-        .map((item) => mapPublishedCaseToMatch(item, activeStudent))
-        .sort((left, right) => right.scoreSummary.totalScore - left.scoreSummary.totalScore),
+    () => {
+      if (!activeStudent) return [];
+      try {
+        return publishedCases
+          .map((item) => mapPublishedCaseToMatch(item, activeStudent))
+          .sort((left, right) => right.scoreSummary.totalScore - left.scoreSummary.totalScore);
+      } catch (err) {
+        console.error('Error matching cases:', err);
+        return [];
+      }
+    },
     [publishedCases, activeStudent]
   );
-  const notifications = caseMatches.filter(
-    (item) => item.scoreSummary.totalScore >= activeStudent.notificationThreshold
-  );
+  const notifications = activeStudent
+    ? caseMatches.filter((item) => item.scoreSummary.totalScore >= activeStudent.notificationThreshold)
+    : [];
 
   const updateStudentField = (name, value) => {
     setEditData((prev) => ({ ...prev, [name]: value }));
@@ -180,51 +305,27 @@ export default function StudentProfile({ userRole }) {
     setCompanyEditData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const addTag = (field, value, isCompanyProfile = false) => {
-    if (isCompanyProfile) {
-      setCompanyEditData((prev) => ({
-        ...prev,
-        [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
-      }));
-      return;
-    }
-
-    setEditData((prev) => ({
-      ...prev,
-      [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
-    }));
-  };
-
-  const removeTag = (field, value, isCompanyProfile = false) => {
-    if (isCompanyProfile) {
-      setCompanyEditData((prev) => ({
-        ...prev,
-        [field]: prev[field].filter((item) => item !== value),
-      }));
-      return;
-    }
-
-    setEditData((prev) => ({
-      ...prev,
-      [field]: prev[field].filter((item) => item !== value),
-    }));
-  };
-
   const addSkill = (skill) => {
     setEditData((prev) => {
       const exists = prev.skills.some((item) => item.name.toLowerCase() === skill.name.toLowerCase());
-      if (exists) {
-        return prev;
-      }
+      if (exists) return prev;
       return { ...prev, skills: [...prev.skills, skill] };
     });
   };
 
-  const removeSkill = (name) => {
-    setEditData((prev) => ({
-      ...prev,
-      skills: prev.skills.filter((skill) => skill.name !== name),
-    }));
+  const removeSkill = async (name) => {
+    try {
+      setSaving(true);
+      await studentProfile.removeSkill(name);
+      setEditData((prev) => ({
+        ...prev,
+        skills: prev.skills.filter((skill) => skill.name !== name),
+      }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateSkillLevel = (name, level) => {
@@ -234,15 +335,82 @@ export default function StudentProfile({ userRole }) {
     }));
   };
 
-  const handleSaveChanges = () => {
-    if (isCompany) {
-      setCompany(companyEditData);
-      saveStoredJson(STORAGE_KEYS.companyProfile, companyEditData);
+  const addTag = (field, value, isCompanyProfile = false) => {
+    if (isCompanyProfile) {
+      setCompanyEditData((prev) => ({
+        ...prev,
+        [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
+      }));
     } else {
-      setStudent(editData);
-      saveStoredJson(STORAGE_KEYS.studentProfile, editData);
+      setEditData((prev) => ({
+        ...prev,
+        [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
+      }));
     }
-    setIsEditing(false);
+  };
+
+  const removeTag = (field, value, isCompanyProfile = false) => {
+    if (isCompanyProfile) {
+      setCompanyEditData((prev) => ({
+        ...prev,
+        [field]: prev[field].filter((item) => item !== value),
+      }));
+    } else {
+      setEditData((prev) => ({
+        ...prev,
+        [field]: prev[field].filter((item) => item !== value),
+      }));
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      if (isCompany) {
+        await companyProfile.update(companyEditData);
+        setCompany(companyEditData);
+      } else {
+        await studentProfile.update(editData);
+        setStudent(editData);
+
+        // Save all skills
+        for (const skill of editData.skills) {
+          await studentProfile.addSkill(skill.name, skill.level);
+        }
+
+        // Save all interests
+        // Map between frontend field names and backend interest_type values
+        const interestMappings = {
+          professionalInterests: 'professional_interest',
+          personalCharacteristics: 'personal_characteristic',
+          currentSubjects: 'current_subject',
+          completedSubjects: 'completed_subject',
+          preferredLocations: 'preferred_location',
+        };
+
+        // Save new interests
+        for (const [fieldName, interestType] of Object.entries(interestMappings)) {
+          const interests = editData[fieldName] || [];
+          const originalInterests = student[fieldName] || [];
+
+          // Add new interests that weren't there before
+          const newInterests = interests.filter(
+            (item) => !originalInterests.includes(item)
+          );
+          for (const interest of newInterests) {
+            await studentProfile.addInterest(interestType, interest);
+          }
+        }
+      }
+      setIsEditing(false);
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to save profile:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -251,7 +419,7 @@ export default function StudentProfile({ userRole }) {
     setIsEditing(false);
   };
 
-  const getStatusBadge = (score, threshold = activeStudent.notificationThreshold) => {
+  const getStatusBadge = (score, threshold = activeStudent?.notificationThreshold || 65) => {
     if (score >= 80) return <span className="status-badge badge-accepted">Sterk match</span>;
     if (score >= threshold) return <span className="status-badge badge-pending">Relevant</span>;
     return <span className="status-badge badge-rejected">Lavere match</span>;
@@ -261,6 +429,31 @@ export default function StudentProfile({ userRole }) {
     navigate(`/internships?selected=${id}`);
   };
 
+  if (loading) {
+    return (
+      <main className="student-profile">
+        <div className="container">
+          <p style={{ textAlign: 'center', padding: '20px' }}>Laster profil...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!student && !company) {
+    return (
+      <main className="student-profile">
+        <div className="container">
+          <p style={{ textAlign: 'center', padding: '20px', color: 'red' }}>
+            {error || 'Kunne ikke laste profil. Sjekk at du er logget inn.'}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const profileData = isCompany ? company : student;
+  const displayName = isCompany ? profileData.name : `${profileData.firstName} ${profileData.lastName}`;
+
   return (
     <main className="student-profile">
       <div className="container">
@@ -268,31 +461,37 @@ export default function StudentProfile({ userRole }) {
           <div className="profile-avatar">
             <div className="avatar-placeholder">
               {isCompany
-                ? company.logo || company.name.slice(0, 2).toUpperCase()
-                : `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`}
+                ? profileData.logo || profileData.name.slice(0, 2).toUpperCase()
+                : `${profileData.firstName.charAt(0)}${profileData.lastName.charAt(0)}`}
             </div>
           </div>
           <div className="profile-info">
             {!isEditing ? (
               <>
-                <h1>{isCompany ? company.name : `${student.firstName} ${student.lastName}`}</h1>
-                <p className="bio">{isCompany ? company.description : student.headline}</p>
+                <h1>{displayName}</h1>
+                <p className="bio">{isCompany ? profileData.description : profileData.headline}</p>
                 <div className="profile-details">
-                  <span>📧 {isCompany ? company.email : student.email}</span>
-                  <span>📱 {isCompany ? company.phone : student.phone}</span>
-                  <span>{isCompany ? `🏢 ${company.industry} • ${company.size}` : `🎓 ${student.school} • ${student.degreeLevel} i ${student.field}`}</span>
-                  <span>{isCompany ? `📍 ${company.location}` : `📍 ${student.location} • Varselterskel ${student.notificationThreshold}%`}</span>
+                  <span>📧 {profileData.email || 'Ikke satt'}</span>
+                  <span>📱 {profileData.phone || 'Ikke satt'}</span>
+                  <span>
+                    {isCompany
+                      ? `🏢 ${profileData.industry || 'Ikke satt'} • ${profileData.size || 'Ikke satt'}`
+                      : `🎓 ${profileData.school || 'Ikke satt'} • ${profileData.degreeLevel || 'Ikke satt'} i ${profileData.field || 'Ikke satt'}`}
+                  </span>
+                  <span>
+                    {isCompany
+                      ? `📍 ${profileData.location || 'Ikke satt'}`
+                      : `📍 ${profileData.location || 'Ikke satt'} • Varselterskel ${profileData.notificationThreshold}%`}
+                  </span>
                 </div>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => {
-                    setEditData(student);
-                    setCompanyEditData(company);
-                    setIsEditing(true);
-                  }}
+                  onClick={() => setIsEditing(true)}
+                  disabled={saving}
                 >
                   {isCompany ? 'Rediger bedriftsprofil' : 'Rediger studentprofil'}
                 </button>
+                {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
               </>
             ) : (
               <div className="edit-form edit-form-accent">
@@ -300,105 +499,195 @@ export default function StudentProfile({ userRole }) {
                   <>
                     <div className="form-group">
                       <label>Bedriftsnavn</label>
-                      <input type="text" value={companyEditData.name} onChange={(event) => updateCompanyField('name', event.target.value)} />
+                      <input
+                        type="text"
+                        value={companyEditData.name}
+                        onChange={(event) => updateCompanyField('name', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Kontaktperson</label>
-                      <input type="text" value={companyEditData.contact} onChange={(event) => updateCompanyField('contact', event.target.value)} />
+                      <input
+                        type="text"
+                        value={companyEditData.contactPerson || ''}
+                        onChange={(event) => updateCompanyField('contactPerson', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>E-post</label>
-                      <input type="email" value={companyEditData.email} onChange={(event) => updateCompanyField('email', event.target.value)} />
+                      <input
+                        type="email"
+                        value={companyEditData.email || ''}
+                        onChange={(event) => updateCompanyField('email', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Telefon</label>
-                      <input type="tel" value={companyEditData.phone} onChange={(event) => updateCompanyField('phone', event.target.value)} />
+                      <input
+                        type="tel"
+                        value={companyEditData.phone || ''}
+                        onChange={(event) => updateCompanyField('phone', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Nettside</label>
-                      <input type="text" value={companyEditData.website} onChange={(event) => updateCompanyField('website', event.target.value)} />
+                      <input
+                        type="text"
+                        value={companyEditData.website || ''}
+                        onChange={(event) => updateCompanyField('website', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Lokasjon</label>
-                      <input type="text" value={companyEditData.location} onChange={(event) => updateCompanyField('location', event.target.value)} />
+                      <input
+                        type="text"
+                        value={companyEditData.location || ''}
+                        onChange={(event) => updateCompanyField('location', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
-                      <label>Bedriftsstorrelse</label>
-                      <input type="text" value={companyEditData.size} onChange={(event) => updateCompanyField('size', event.target.value)} />
+                      <label>Bedriftsstørrelse</label>
+                      <input
+                        type="text"
+                        value={companyEditData.size || ''}
+                        onChange={(event) => updateCompanyField('size', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Bransje</label>
-                      <input type="text" value={companyEditData.industry} onChange={(event) => updateCompanyField('industry', event.target.value)} />
+                      <input
+                        type="text"
+                        value={companyEditData.industry || ''}
+                        onChange={(event) => updateCompanyField('industry', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Beskrivelse</label>
-                      <textarea rows="4" value={companyEditData.description} onChange={(event) => updateCompanyField('description', event.target.value)} />
+                      <textarea
+                        rows="4"
+                        value={companyEditData.description || ''}
+                        onChange={(event) => updateCompanyField('description', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
-                    <TagEditor
-                      label="Bedriftskvalifikasjoner"
-                      items={companyEditData.companyQualifications}
-                      onAdd={(value) => addTag('companyQualifications', value, true)}
-                      onRemove={(value) => removeTag('companyQualifications', value, true)}
-                      placeholder="For eksempel Produktutvikling"
-                    />
-                    <TagEditor
-                      label="Arbeidsområder"
-                      items={companyEditData.workAreas}
-                      onAdd={(value) => addTag('workAreas', value, true)}
-                      onRemove={(value) => removeTag('workAreas', value, true)}
-                      placeholder="For eksempel Analyseverktøy"
-                    />
-                    <TagEditor
-                      label="Rekrutteringsfokus"
-                      items={companyEditData.hiringFocus}
-                      onAdd={(value) => addTag('hiringFocus', value, true)}
-                      onRemove={(value) => removeTag('hiringFocus', value, true)}
-                      placeholder="For eksempel Frontend"
-                    />
                   </>
                 ) : (
                   <>
                     <div className="form-group">
                       <label>Fornavn</label>
-                      <input type="text" value={editData.firstName} onChange={(event) => updateStudentField('firstName', event.target.value)} />
+                      <input
+                        type="text"
+                        value={editData.firstName}
+                        onChange={(event) => updateStudentField('firstName', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Etternavn</label>
-                      <input type="text" value={editData.lastName} onChange={(event) => updateStudentField('lastName', event.target.value)} />
+                      <input
+                        type="text"
+                        value={editData.lastName}
+                        onChange={(event) => updateStudentField('lastName', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Overskrift</label>
-                      <input type="text" value={editData.headline} onChange={(event) => updateStudentField('headline', event.target.value)} />
+                      <input
+                        type="text"
+                        value={editData.headline}
+                        onChange={(event) => updateStudentField('headline', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Biografi</label>
-                      <textarea rows="4" value={editData.bio} onChange={(event) => updateStudentField('bio', event.target.value)} />
+                      <textarea
+                        rows="4"
+                        value={editData.bio}
+                        onChange={(event) => updateStudentField('bio', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>E-post</label>
-                      <input type="email" value={editData.email} onChange={(event) => updateStudentField('email', event.target.value)} />
+                      <input
+                        type="email"
+                        value={editData.email}
+                        onChange={(event) => updateStudentField('email', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Telefon</label>
-                      <input type="tel" value={editData.phone} onChange={(event) => updateStudentField('phone', event.target.value)} />
+                      <input
+                        type="tel"
+                        value={editData.phone}
+                        onChange={(event) => updateStudentField('phone', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Lokasjon</label>
-                      <input type="text" value={editData.location} onChange={(event) => updateStudentField('location', event.target.value)} />
+                      <input
+                        type="text"
+                        value={editData.location}
+                        onChange={(event) => updateStudentField('location', event.target.value)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
-                      <label>Studieprogram</label>
-                      <input type="text" value={editData.field} onChange={(event) => updateStudentField('field', event.target.value)} />
+                      <label>Universitet / skole</label>
+                      <input
+                        type="text"
+                        value={editData.school || ''}
+                        onChange={(event) => updateStudentField('school', event.target.value)}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Grad nivå</label>
+                      <input
+                        type="text"
+                        value={editData.degreeLevel || ''}
+                        onChange={(event) => updateStudentField('degreeLevel', event.target.value)}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Graduerings år</label>
+                      <input
+                        type="number"
+                        value={editData.graduationYear || ''}
+                        onChange={(event) => updateStudentField('graduationYear', Number(event.target.value) || null)}
+                        disabled={saving}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Varselterskel</label>
-                      <input type="number" min="0" max="100" value={editData.notificationThreshold} onChange={(event) => updateStudentField('notificationThreshold', Number(event.target.value))} />
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editData.notificationThreshold}
+                        onChange={(event) => updateStudentField('notificationThreshold', Number(event.target.value))}
+                        disabled={saving}
+                      />
                     </div>
                     <SkillEditor
                       skills={editData.skills}
                       onAdd={addSkill}
                       onRemove={removeSkill}
                       onLevelChange={updateSkillLevel}
+                      loading={saving}
                     />
                     <TagEditor
                       label="Faglige interesser"
@@ -406,6 +695,7 @@ export default function StudentProfile({ userRole }) {
                       onAdd={(value) => addTag('professionalInterests', value)}
                       onRemove={(value) => removeTag('professionalInterests', value)}
                       placeholder="For eksempel Produktdesign"
+                      loading={saving}
                     />
                     <TagEditor
                       label="Personlige egenskaper"
@@ -413,6 +703,7 @@ export default function StudentProfile({ userRole }) {
                       onAdd={(value) => addTag('personalCharacteristics', value)}
                       onRemove={(value) => removeTag('personalCharacteristics', value)}
                       placeholder="For eksempel Strukturert"
+                      loading={saving}
                     />
                     <TagEditor
                       label="Pågående fag"
@@ -420,6 +711,7 @@ export default function StudentProfile({ userRole }) {
                       onAdd={(value) => addTag('currentSubjects', value)}
                       onRemove={(value) => removeTag('currentSubjects', value)}
                       placeholder="For eksempel Webutvikling"
+                      loading={saving}
                     />
                     <TagEditor
                       label="Fullførte fag"
@@ -427,6 +719,7 @@ export default function StudentProfile({ userRole }) {
                       onAdd={(value) => addTag('completedSubjects', value)}
                       onRemove={(value) => removeTag('completedSubjects', value)}
                       placeholder="For eksempel Databaser"
+                      loading={saving}
                     />
                     <TagEditor
                       label="Foretrukne steder"
@@ -434,193 +727,86 @@ export default function StudentProfile({ userRole }) {
                       onAdd={(value) => addTag('preferredLocations', value)}
                       onRemove={(value) => removeTag('preferredLocations', value)}
                       placeholder="For eksempel Oslo"
+                      loading={saving}
                     />
                   </>
                 )}
                 <div className="form-actions">
-                  <button className="btn btn-primary" onClick={handleSaveChanges}>Lagre endringer</button>
-                  <button className="btn btn-secondary" onClick={handleCancel}>Avbryt</button>
+                  <button className="btn btn-primary" onClick={handleSaveChanges} disabled={saving}>
+                    {saving ? 'Lagrer...' : 'Lagre endringer'}
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleCancel} disabled={saving}>
+                    Avbryt
+                  </button>
                 </div>
+                {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
               </div>
             )}
           </div>
         </section>
 
-        {isCompany ? (
-          <>
-            <section className="profile-section">
-              <h2>Bedriftsoversikt</h2>
-              <div className="applications-list">
-                <div className="application-card">
-                  <div className="app-info">
-                    <h3>Registrering</h3>
-                    <p>{company.registrationComplete ? 'Registrert og klar for publisering.' : 'Registrering ikke fullfort.'}</p>
-                    <small>{company.location} • {company.size}</small>
-                  </div>
-                  <div className="app-status">{getStatusBadge(85, 65)}</div>
-                </div>
-                <div className="application-card">
-                  <div className="app-info">
-                    <h3>Forventningsgrunnlag</h3>
-                    <p>{company.expectationsQualityScore}% kvalitet i bedriftsprofilen</p>
-                    <small>Kan forbedres ved a beskrive leveranser og teamarbeid tydeligere.</small>
-                  </div>
-                  <div className="app-status">{getStatusBadge(company.expectationsQualityScore, 65)}</div>
-                </div>
-              </div>
-            </section>
-
-            <section className="profile-section">
-              <h2>Pågående annonsearbeid</h2>
-              {drafts.length > 0 ? (
-                <div className="applications-list">
-                  {drafts.map((draft) => (
-                    <div key={draft.id} className="application-card">
-                      <div className="app-info">
-                        <h3>{draft.title || 'Ny upublisert sak'}</h3>
-                        <p>{draft.startWithin || 'Ingen oppstartsfrist lagt inn'}</p>
-                        <small>Sist oppdatert {formatDate(draft.lastEditedAt)}</small>
+        {!isCompany && (
+          <section className="notices">
+            <h2>Relevante praksisplasser</h2>
+            <p>Basert på profilen din får du varsler når nye praksisplasser matcher dine interesser over varselterskel på {activeStudent?.notificationThreshold}%.</p>
+            {notifications.length === 0 ? (
+              <p>Ingen varsler akkurat nå. Sjekk alle <a href="/internships">praksisplassene</a>.</p>
+            ) : (
+              <div className="internship-list">
+                {notifications.map((notice) => (
+                  <div
+                    key={notice.id}
+                    className="internship-card internship-card-clickable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openRecommendedAd(notice.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openRecommendedAd(notice.id);
+                      }
+                    }}
+                  >
+                    {notice.scoreSummary ? (
+                      <div className="match-summary">
+                        <div className="match-summary-copy">
+                          <p className="match-summary-kicker">Din match</p>
+                          <p className="match-summary-title">
+                            {notice.scoreSummary.rankedSkillMatches[0]?.name || notice.scoreSummary.topQualification}
+                          </p>
+                        </div>
+                        <div className="match-score match-score-md">
+                          <div className="match-score-inner">
+                            <strong className="match-score-value match-score-value-md">{notice.scoreSummary.totalScore}%</strong>
+                            <span className="match-score-caption">match</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="app-status">
-                        <button className="btn btn-primary btn-small" onClick={() => navigate('/Chatbot_test')}>Fortsett</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-state">Ingen pågående annonseutkast akkurat nå.</p>
-              )}
-            </section>
-
-            <section className="profile-section">
-              <h2>Publiserte saker</h2>
-              <div className="applications-list">
-                {publishedCases.map((ad) => (
-                  <div key={ad.id} className="application-card">
-                    <div className="app-info">
-                      <h3>{ad.title}</h3>
-                      <p>{ad.classification?.type || 'Bachelor'} • Viktigste krav: {ad.topQualification || ad.requirementAnalysis?.mostImportantQualification}</p>
-                      <small>Publisert {formatDate(ad.publishedAt)}</small>
-                    </div>
-                    <div className="app-status">
-                      <button className="btn btn-primary btn-small" onClick={() => navigate('/Chatbot_test')}>Rediger ny versjon</button>
-                    </div>
+                    ) : null}
+                    <h3>{notice.title}</h3>
+                    <p className="company">🏢 {notice.company}</p>
+                    <p className="location">📍 {notice.location}</p>
+                    <p>{notice.description}</p>
+                    <p className="internship-meta">
+                      <strong>Periode:</strong> {notice.startDate} til {notice.endDate}
+                    </p>
+                    <p className="internship-meta">
+                      <strong>Maks timer:</strong> {notice.maxHours}
+                    </p>
+                    <p className="internship-meta">
+                      <strong>Kompensasjon:</strong>{' '}
+                      {notice.salaryType === 'hourly'
+                        ? `Timelønn: ${notice.compensationAmount} NOK/time`
+                        : `Fastpris: ${notice.compensationAmount} NOK`}
+                    </p>
+                    <button type="button" className="btn btn-primary btn-inline-small">
+                      Se mer info
+                    </button>
                   </div>
                 ))}
               </div>
-            </section>
-
-            <section className="profile-section">
-              <h2>Bedriftsprofil</h2>
-              <p><strong>Kjerneområder</strong></p>
-              <ChipList items={company.companyQualifications} />
-              <p className="section-spacer-top"><strong>Arbeidsområder</strong></p>
-              <ChipList items={company.workAreas} />
-              <p className="section-spacer-top"><strong>Rekrutteringsfokus</strong></p>
-              <ChipList items={company.hiringFocus} />
-            </section>
-          </>
-        ) : (
-          <>
-            <section className="profile-section">
-              <h2>Faglig profil</h2>
-              <p><strong>Rangerte ferdigheter</strong></p>
-              <div className="skill-bar-list">
-                {student.skills
-                  .slice()
-                  .sort((left, right) => right.level - left.level)
-                  .map((skill) => (
-                    <div key={skill.name} className="skill-bar-row">
-                      <strong>{skill.name}</strong>
-                      <div className="skill-bar-track">
-                        <div className={`skill-bar-fill skill-bar-fill-${skill.level}`} />
-                      </div>
-                      <span>{skill.level}/5</span>
-                    </div>
-                  ))}
-              </div>
-              <p className="section-spacer-top"><strong>Interesser</strong></p>
-              <ChipList items={student.professionalInterests} />
-              <p className="section-spacer-top"><strong>Personlige egenskaper</strong></p>
-              <ChipList items={student.personalCharacteristics} />
-            </section>
-
-            <section className="profile-section">
-              <h2>Fag og preferanser</h2>
-              <p><strong>Pågående fag</strong></p>
-              <ChipList items={student.currentSubjects} />
-              <p className="section-spacer-top"><strong>Fullførte fag</strong></p>
-              <ChipList items={student.completedSubjects} />
-              <p className="section-spacer-top"><strong>Foretrukne steder</strong></p>
-              <ChipList items={student.preferredLocations} />
-            </section>
-
-            <section className="profile-section">
-              <h2>Varsler og match</h2>
-              {notifications.length > 0 ? (
-                <div className="applications-list">
-                  {notifications.map((item) => (
-                    <div key={item.id} className="application-card">
-                      <div className="app-info">
-                        <h3>{item.title}</h3>
-                        <p>{item.classification?.type || 'Bachelor'} • {item.scoreSummary.totalScore}% match</p>
-                        <small>
-                          Beste ferdigheter: {item.scoreSummary.rankedSkillMatches.slice(0, 2).map((skill) => `${skill.name} (${skill.level}/5)`).join(', ') || item.scoreSummary.topQualification}
-                        </small>
-                      </div>
-                      <div className="app-status app-status-stack">
-                        {getStatusBadge(item.scoreSummary.totalScore)}
-                        <button className="btn btn-primary btn-small" onClick={() => openRecommendedAd(item.id)}>
-                          Se annonse
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-state">Ingen publiserte saker ligger over varselterskelen din ennå.</p>
-              )}
-            </section>
-
-            <section className="profile-section">
-              <h2>Match mot publiserte saker</h2>
-              <div className="applications-list">
-                {caseMatches.map((item) => (
-                  <div key={item.id} className="application-card">
-                    <div className="app-info">
-                      <h3>{item.title}</h3>
-                      <p>{item.classification?.type || 'Bachelor'} • Total score {item.scoreSummary.totalScore}%</p>
-                      <small>
-                        Toppferdigheter: {item.scoreSummary.rankedSkillMatches.slice(0, 2).map((skill) => `${skill.name} (${skill.level}/5)`).join(', ') || 'Ingen direkte ferdighetstreff'}
-                      </small>
-                    </div>
-                    <div className="app-status app-status-stack">
-                      {getStatusBadge(item.scoreSummary.totalScore)}
-                      <button className="btn btn-primary btn-small" onClick={() => openRecommendedAd(item.id)}>
-                        Åpen annonse
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="profile-section">
-              <h2>Automatisk datainnhenting</h2>
-              <div className="applications-list">
-                <div className="application-card">
-                  <div className="app-info">
-                    <h3>Status</h3>
-                    <p>{student.dataCollectionStatus}</p>
-                    <small>Neste naturlige steg er synk mot studieprogresjon, CV eller LinkedIn-import.</small>
-                  </div>
-                  <div className="app-status">
-                    <button className="btn btn-secondary btn-small" onClick={() => navigate('/internships')}>Se praksisplasser</button>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </>
+            )}
+          </section>
         )}
       </div>
       <Footer />

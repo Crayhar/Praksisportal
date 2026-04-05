@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 function NavIcon({ children }) {
   return (
@@ -9,7 +9,8 @@ function NavIcon({ children }) {
   );
 }
 
-export default function Navigation({ userRole }) {
+export default function Navigation({ userRole, user, onLogout }) {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -20,12 +21,19 @@ export default function Navigation({ userRole }) {
     setMenuOpen(false);
   };
 
-  const roleLabel =
-    userRole === 'student'
+  const handleLogout = () => {
+    onLogout();
+    closeMenu();
+    navigate('/');
+  };
+
+  const roleLabel = user
+    ? `${user.firstName} ${user.lastName} (${userRole === 'student' ? 'Student' : 'Bedrift'})`
+    : userRole === 'student'
       ? 'Studentvisning'
       : userRole === 'company'
         ? 'Bedriftsvisning'
-        : 'Ingen testrolle valgt';
+        : 'Ikke logget inn';
 
   const homeItem = {
     to: '/',
@@ -73,7 +81,7 @@ export default function Navigation({ userRole }) {
   };
 
   const aiItem = {
-    to: '/Chatbot_test',
+    to: userRole === 'company' ? '/chatbot' : '/Chatbot_test',
     label: userRole === 'company' ? 'AI-annonse' : 'AI-verktøy',
     icon: (
       <NavIcon>
@@ -105,7 +113,9 @@ export default function Navigation({ userRole }) {
 
   const navItems = userRole === 'company'
     ? [homeItem, internshipsItem, applyItem, aiItem, profileItem]
-    : [homeItem, internshipsItem, applyItem, profileItem, aiItem];
+    : userRole === 'student'
+      ? [homeItem, internshipsItem, applyItem, profileItem, aiItem]
+      : [homeItem, internshipsItem];
 
   return (
     <nav className="navbar">
@@ -129,8 +139,9 @@ export default function Navigation({ userRole }) {
             </li>
           ))}
           <li className="nav-item">
-            <a
-              href="#contact"
+            <Link
+              to="/"
+              state={{ scrollTo: 'contact' }}
               className="nav-link"
               onClick={closeMenu}
               aria-label="Kontakt"
@@ -142,11 +153,71 @@ export default function Navigation({ userRole }) {
               </NavIcon>
               <span className="nav-tooltip">Kontakt</span>
               <span className="sr-only">Kontakt</span>
-            </a>
+            </Link>
           </li>
-          <li className="nav-item nav-role-indicator">
-            <span className="nav-link">{roleLabel}</span>
-          </li>
+          {user ? (
+            <>
+              <li className="nav-item nav-role-indicator">
+                <span className="nav-link">{roleLabel}</span>
+              </li>
+              <li className="nav-item">
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLogout();
+                  }}
+                  className="nav-link nav-logout"
+                  aria-label="Logg ut"
+                >
+                  <NavIcon>
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M15.5 4a.5.5 0 0 1 .5.5v3h2V4.5A2.5 2.5 0 0 0 15.5 2h-9A2.5 2.5 0 0 0 4 4.5v15A2.5 2.5 0 0 0 6.5 22h9a2.5 2.5 0 0 0 2.5-2.5v-2.5h-2v3a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-15a.5.5 0 0 1 .5-.5h9Z" />
+                      <path d="M19.7 11.3a.75.75 0 0 0-1.06-1.06l-2 2V7.5a.75.75 0 0 0-1.5 0v4.74l-2-2a.75.75 0 1 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5Z" />
+                    </svg>
+                  </NavIcon>
+                  <span className="nav-tooltip">Logg ut</span>
+                  <span className="sr-only">Logg ut</span>
+                </a>
+              </li>
+            </>
+          ) : (
+            <>
+              <li className="nav-item">
+                <Link
+                  to="/login"
+                  className="nav-link"
+                  onClick={closeMenu}
+                  aria-label="Logg inn"
+                >
+                  <NavIcon>
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M6.5 2h8a2.5 2.5 0 0 1 2.5 2.5v2H14V4.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2h2.5v2A2.5 2.5 0 0 1 14.5 22h-8a2.5 2.5 0 0 1-2.5-2.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+                      <path d="M16.78 11.28a.75.75 0 0 0-1.06-1.06l-2 2V7.5a.75.75 0 0 0-1.5 0v4.72l-2-2a.75.75 0 1 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5Z" />
+                    </svg>
+                  </NavIcon>
+                  <span className="nav-tooltip">Logg inn</span>
+                  <span className="sr-only">Logg inn</span>
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link
+                  to="/signup"
+                  className="nav-link"
+                  onClick={closeMenu}
+                  aria-label="Registrer deg"
+                >
+                  <NavIcon>
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+                    </svg>
+                  </NavIcon>
+                  <span className="nav-tooltip">Registrer</span>
+                  <span className="sr-only">Registrer deg</span>
+                </Link>
+              </li>
+            </>
+          )}
         </ul>
         <div
           className={`hamburger ${menuOpen ? 'active' : ''}`}

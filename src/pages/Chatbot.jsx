@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../App';
 import LLM from '@themaximalist/llm.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,6 +18,7 @@ import {
   parseList,
 } from '../utils/caseMatching';
 import { loadStoredJson, saveStoredJson } from '../utils/storage';
+import { cases as casesAPI, companyProfile as companyProfileAPI } from '../utils/api';
 
 const ROLE_OPTIONS = {
   frontend: 'Frontendutvikler',
@@ -101,12 +104,11 @@ function prepareCaseForm(form, companyProfile) {
     taskFocus: form.taskFocus?.trim() || roleLabel,
     assignmentContext: form.assignmentContext?.trim() || taskDescription,
     taskDescription,
-    technicalTerms: form.technicalTerms?.trim() || form.professionalQualifications?.trim() || roleLabel,
+    technicalTerms: form.technicalTerms?.trim() || (typeof form.professionalQualifications === 'string' && form.professionalQualifications.trim()) || roleLabel,
     deliveries: form.deliveries?.trim() || scope.deliveries,
     expectations:
       form.expectations?.trim() || `${collaborationExpectation} Arbeidsform: ${workMode}.`,
-    personalQualifications: form.personalQualifications?.trim() || profile.personal,
-    website,
+    personalQualifications: (typeof form.personalQualifications === 'string' && form.personalQualifications.trim()) || profile.personal,
     startWithin: form.startWithin?.trim() || scope.startWithin,
     maxHours: String(form.maxHours || scope.hours),
     location: location || workMode,
@@ -165,8 +167,6 @@ Oppdrag:
 - Sluttdato: ${formatDate(form.endDate)}
 - Start senest innen: ${form.startWithin}
 - Omfang: ${form.maxHours} timer
-- Lonnstype: ${form.salaryType}
-- Kompensasjon: ${form.compensationAmount}
 - Sakstype vurdert av systemet: ${classification.type}
 - Relevante fag: ${classification.relevantSubjects.join(', ')}
 - Viktigste kvalifikasjon i kravbildet: ${requirementAnalysis.mostImportantQualification}
@@ -434,28 +434,58 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
 }
 
 export default function Chatbot({ userRole }) {
-  const isCompany = userRole === 'company';
-  const [companyProfile] = useState(() => loadStoredJson(STORAGE_KEYS.companyProfile, defaultCompanyProfile));
-  const [drafts, setDrafts] = useState(() => loadStoredJson(STORAGE_KEYS.caseDrafts, defaultDrafts));
-  const [publishedCases, setPublishedCases] = useState(() =>
-    loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases)
-  );
-  const [form, setForm] = useState(() => {
-    const storedDrafts = loadStoredJson(STORAGE_KEYS.caseDrafts, defaultDrafts);
-    return storedDrafts[0] || createEmptyCaseDraft();
-  });
+  const navigate = useNavigate();
+  const { userRole: authRole } = useContext(AuthContext);
+  const isCompany = authRole === 'company';
+
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [drafts, setDrafts] = useState([]);
+  const [publishedCases, setPublishedCases] = useState([]);
+  const [form, setForm] = useState(createEmptyCaseDraft());
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [initializing, setInitializing] = useState(true);
   const hasGeneratedDraft = Boolean(form.generatedAd);
 
+  // Load data from API on mount
   useEffect(() => {
-    saveStoredJson(STORAGE_KEYS.caseDrafts, drafts);
-  }, [drafts]);
+    const loadData = async () => {
+      try {
+        setInitializing(true);
+        if (isCompany) {
+          const company = await companyProfileAPI.get();
+          setCompanyProfile(company);
+          const draftList = await casesAPI.listDrafts();
+          setDrafts(draftList);
+          if (draftList.length > 0) {
+            setForm(createEmptyCaseDraft(draftList[0]));
+          } else {
+            setForm(createEmptyCaseDraft({
+              website: company.website,
+              logo: company.logo,
+              companyQualifications: company.description,
+            }));
+          }
+        }
+        const published = await casesAPI.listPublished();
+        setPublishedCases(published);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setCompanyProfile(defaultCompanyProfile);
+        setDrafts(defaultDrafts);
+        setPublishedCases(defaultPublishedCases);
+      } finally {
+        setInitializing(false);
+      }
+    };
 
-  useEffect(() => {
-    saveStoredJson(STORAGE_KEYS.publishedCases, publishedCases);
-  }, [publishedCases]);
+    if (isCompany) {
+      loadData();
+    } else {
+      setInitializing(false);
+    }
+  }, [isCompany]);
 
   const preparedForm = useMemo(() => prepareCaseForm(form, companyProfile), [form, companyProfile]);
   const classification = useMemo(() => classifyCase(preparedForm), [preparedForm]);
@@ -523,15 +553,28 @@ export default function Chatbot({ userRole }) {
     });
   };
 
-  const syncCurrentDraft = (nextForm) => {
-    setDrafts((prev) => {
-      const draftExists = prev.some((draft) => draft.id === nextForm.id);
-      if (!draftExists) {
-        return [nextForm, ...prev];
+  const syncCurrentDraft = async (nextForm) => {
+    try {
+      if (nextForm.id && drafts.some(d => d.id === nextForm.id)) {
+        // Update existing draft
+        await casesAPI.updateDraft(nextForm.id, nextForm);
+      } else if (isCompany) {
+        // Create new draft
+        const created = await casesAPI.createDraft(nextForm);
+        nextForm.id = created.id;
       }
 
-      return prev.map((draft) => (draft.id === nextForm.id ? nextForm : draft));
-    });
+      setDrafts((prev) => {
+        const draftExists = prev.some((draft) => draft.id === nextForm.id);
+        if (!draftExists) {
+          return [nextForm, ...prev];
+        }
+        return prev.map((draft) => (draft.id === nextForm.id ? nextForm : draft));
+      });
+    } catch (err) {
+      console.error('Failed to sync draft:', err);
+      setStatusMessage('Kunne ikke lagre utkast. Sjekk internettforbindelsen.');
+    }
   };
 
   const handleCreateNewDraft = () => {
@@ -547,7 +590,7 @@ export default function Chatbot({ userRole }) {
   };
 
   const handleLoadDraft = (draft) => {
-    setForm(draft);
+    setForm(createEmptyCaseDraft(draft));
     setErrors({});
     setStatusMessage(`Fortsetter utkast: ${draft.title || 'Ny sak'}.`);
   };
@@ -661,7 +704,7 @@ export default function Chatbot({ userRole }) {
     }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     const nextErrors = validateForm(preparedForm);
     setErrors(nextErrors);
 
@@ -706,6 +749,16 @@ export default function Chatbot({ userRole }) {
         : 'Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.'
     );
   };
+
+  if (initializing) {
+    return (
+      <main className="chatbot-locked-shell">
+        <section className="profile-section">
+          <p style={{ textAlign: 'center', padding: '20px' }}>Laster...</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!isCompany) {
     return (
@@ -757,11 +810,11 @@ export default function Chatbot({ userRole }) {
         <aside className="case-panel">
           <h2>Bedrift og utkast</h2>
           <p className="muted case-panel-top-copy">
-            Registrert som {companyProfile.name}. Uferdige sessions lagres lokalt slik at dere kan fortsette senere.
+            Registrert som {companyProfile?.name || 'Bedrift'}. Uferdige sessions lagres i databasen slik at dere kan fortsette senere.
           </p>
 
           <div className="metric-card case-panel-top-gap">
-            <strong>{companyProfile.expectationsQualityScore}%</strong>
+            <strong>{companyProfile?.expectations_quality_score || '0'}%</strong>
             <span>Estimert kvalitet på forventningsgrunnlaget i bedriftsprofilen.</span>
           </div>
 
@@ -1026,41 +1079,6 @@ export default function Chatbot({ userRole }) {
                 />
                 {errors.endDate ? <p className="error-text">{errors.endDate}</p> : null}
               </label>
-
-              {/* <label className="full">
-                Lonnsmodell
-                <div className="case-radio-group compact">
-                  <label className={`case-radio-card ${form.salaryType === 'hourly' ? 'selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="salaryType"
-                      checked={form.salaryType === 'hourly'}
-                      onChange={() => updateField('salaryType', 'hourly')}
-                    />
-                    <span>Timelønn</span>
-                  </label>
-                  <label className={`case-radio-card ${form.salaryType === 'fixed' ? 'selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="salaryType"
-                      checked={form.salaryType === 'fixed'}
-                      onChange={() => updateField('salaryType', 'fixed')}
-                    />
-                    <span>Fastpris</span>
-                  </label>
-                </div>
-              </label>
-
-              <label>
-                Kompensasjon *
-                <input
-                  className="case-input"
-                  value={form.compensationAmount}
-                  onChange={(event) => updateField('compensationAmount', event.target.value)}
-                  placeholder="250"
-                />
-                {errors.compensationAmount ? <p className="error-text">{errors.compensationAmount}</p> : null}
-              </label> */}
             </div>
 
             <div className="case-section-top">

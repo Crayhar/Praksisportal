@@ -24,6 +24,9 @@ function getStudentSkills(studentProfile) {
 }
 
 export function parseList(input) {
+  if (!input || typeof input !== 'string') {
+    return [];
+  }
   return input
     .split(/\n|,/)
     .map((item) => item.trim())

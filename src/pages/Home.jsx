@@ -1,13 +1,20 @@
-import { useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { internships } from '../data/internships';
+import { useRef, useState, useEffect, useContext } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { AuthContext } from '../App';
 import Footer from '../components/Footer';
 import InternshipDetailsModal from '../components/InternshipDetailsModal';
-import { STORAGE_KEYS, defaultPublishedCases, defaultStudentProfile } from '../data/portalData';
+import { defaultStudentProfile } from '../data/portalData';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
-import { loadStoredJson } from '../utils/storage';
+import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
 
 function mapPublishedCaseToInternship(item) {
+  // Handle professionalQualifications - could be array (from API) or string (from old data)
+  const qualifications = Array.isArray(item.professionalQualifications)
+    ? item.professionalQualifications
+    : typeof item.professionalQualifications === 'string'
+      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+      : [];
+
   return {
     id: item.id,
     title: item.title,
@@ -20,13 +27,15 @@ function mapPublishedCaseToInternship(item) {
     maxHours: item.maxHours,
     salaryType: item.salaryType,
     compensationAmount: item.compensationAmount,
-    skills: item.professionalQualifications
-      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [],
+    skills: qualifications,
     internshipCredits: true,
     classification: item.classification,
-    professionalQualifications: item.professionalQualifications || '',
-    personalQualifications: item.personalQualifications || '',
+    professionalQualifications: Array.isArray(item.professionalQualifications)
+      ? item.professionalQualifications.join(', ')
+      : item.professionalQualifications || '',
+    personalQualifications: Array.isArray(item.personalQualifications)
+      ? item.personalQualifications.join(', ')
+      : item.personalQualifications || '',
     assignmentContext: item.assignmentContext || item.taskDescription,
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
@@ -63,16 +72,71 @@ function mapInternshipToCaseLike(internship) {
 }
 
 export default function Home({ userRole, setUserRole }) {
+  const { userRole: authRole } = useContext(AuthContext);
+  const location = useLocation();
   const contactFormRef = useRef(null);
   const [selectedInternship, setSelectedInternship] = useState(null);
-  const studentProfile = useMemo(
-    () => loadStoredJson(STORAGE_KEYS.studentProfile, defaultStudentProfile),
-    []
-  );
-  const publishedCases = useMemo(
-    () => loadStoredJson(STORAGE_KEYS.publishedCases, defaultPublishedCases).map(mapPublishedCaseToInternship),
-    []
-  );
+  const [studentProfile, setStudentProfile] = useState(defaultStudentProfile);
+  const [publishedCases, setPublishedCases] = useState([]);
+
+  const isCompany = authRole === 'company';
+  const isStudent = authRole === 'student';
+
+  // Fetch student profile and published cases from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        if (isStudent) {
+          const profileData = await studentProfileAPI.get();
+          // Convert API response skills format to UI format
+          const skills = profileData.skills?.map(s => ({
+            name: s.name,
+            level: s.level || 3
+          })) || [];
+
+          const formattedProfile = {
+            ...profileData,
+            skills,
+            firstName: profileData.firstName || '',
+            lastName: profileData.lastName || '',
+            email: profileData.email || '',
+            phone: profileData.phone || '',
+            school: profileData.school || '',
+            field: profileData.field || '',
+            degreeLevel: profileData.degree_level || '',
+            graduationYear: profileData.graduation_year,
+            location: profileData.location || '',
+            notificationThreshold: profileData.notification_threshold || 65,
+          };
+          setStudentProfile(formattedProfile);
+        } else {
+          setStudentProfile(defaultStudentProfile);
+        }
+
+        const casesData = await casesAPI.listPublished();
+        setPublishedCases(casesData.map(mapPublishedCaseToInternship));
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        // Fallback to defaults on error
+        setStudentProfile(defaultStudentProfile);
+        setPublishedCases([]);
+      }
+    };
+
+    loadData();
+  }, [isStudent]);
+
+  // Scroll to contact section if requested
+  useEffect(() => {
+    if (location.state?.scrollTo === 'contact') {
+      const contactSection = document.getElementById('contact');
+      if (contactSection) {
+        contactSection.scrollIntoView({ behavior: 'smooth' });
+        // Clear the state so it doesn't scroll again on subsequent renders
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [location]);
 
   const handleContactSubmit = (e) => {
     e.preventDefault();
@@ -88,9 +152,7 @@ export default function Home({ userRole, setUserRole }) {
     }
   };
 
-  const latestInternships = [...publishedCases, ...internships].slice(0, 3);
-  const isCompany = userRole === 'company';
-  const isStudent = userRole === 'student';
+  const latestInternships = publishedCases.slice(0, 3);
   const getCompensationSummary = (internship) =>
     internship.salaryType === 'hourly'
       ? `Timelønn: ${internship.compensationAmount} NOK/time`
