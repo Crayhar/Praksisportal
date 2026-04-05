@@ -139,8 +139,9 @@ export default function Navigation({ userRole, user, onLogout }) {
             </li>
           ))}
           <li className="nav-item">
-            <a
-              href="#contact"
+            <Link
+              to="/"
+              state={{ scrollTo: 'contact' }}
               className="nav-link"
               onClick={closeMenu}
               aria-label="Kontakt"
@@ -152,7 +153,7 @@ export default function Navigation({ userRole, user, onLogout }) {
               </NavIcon>
               <span className="nav-tooltip">Kontakt</span>
               <span className="sr-only">Kontakt</span>
-            </a>
+            </Link>
           </li>
           {user ? (
             <>
@@ -160,8 +161,12 @@ export default function Navigation({ userRole, user, onLogout }) {
                 <span className="nav-link">{roleLabel}</span>
               </li>
               <li className="nav-item">
-                <button
-                  onClick={handleLogout}
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLogout();
+                  }}
                   className="nav-link nav-logout"
                   aria-label="Logg ut"
                 >
@@ -173,7 +178,7 @@ export default function Navigation({ userRole, user, onLogout }) {
                   </NavIcon>
                   <span className="nav-tooltip">Logg ut</span>
                   <span className="sr-only">Logg ut</span>
-                </button>
+                </a>
               </li>
             </>
           ) : (

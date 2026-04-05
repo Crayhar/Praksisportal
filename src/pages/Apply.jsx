@@ -222,7 +222,7 @@ export default function Apply({ userRole }) {
             <p className="section-copy-bottom">
               Bruk bedriftsflyten for å opprette eller revidere praksisannonser.
             </p>
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/Chatbot_test')}>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/chatbot')}>
               Gå til annonseverktøyet
             </button>
           </div>

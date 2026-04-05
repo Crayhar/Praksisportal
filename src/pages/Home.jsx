@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
 import Footer from '../components/Footer';
 import InternshipDetailsModal from '../components/InternshipDetailsModal';
@@ -61,6 +61,7 @@ function mapInternshipToCaseLike(internship) {
 
 export default function Home({ userRole, setUserRole }) {
   const { userRole: authRole } = useContext(AuthContext);
+  const location = useLocation();
   const contactFormRef = useRef(null);
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [studentProfile, setStudentProfile] = useState(defaultStudentProfile);
@@ -113,6 +114,18 @@ export default function Home({ userRole, setUserRole }) {
     loadData();
   }, [isStudent]);
 
+  // Scroll to contact section if requested
+  useEffect(() => {
+    if (location.state?.scrollTo === 'contact') {
+      const contactSection = document.getElementById('contact');
+      if (contactSection) {
+        contactSection.scrollIntoView({ behavior: 'smooth' });
+        // Clear the state so it doesn't scroll again on subsequent renders
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [location]);
+
   const handleContactSubmit = (e) => {
     e.preventDefault();
     const name = contactFormRef.current.querySelector('input[type="text"]').value;
@@ -158,7 +171,7 @@ export default function Home({ userRole, setUserRole }) {
               </button>
             </div>
           </div>
-          <Link to={isCompany ? '/Chatbot_test' : '/internships'} className="btn btn-primary">
+          <Link to={isCompany ? '/chatbot' : '/internships'} className="btn btn-primary">
             {isCompany ? 'Opprett annonse' : 'Utforsk praksisplasser'}
           </Link>
           {isCompany ? (

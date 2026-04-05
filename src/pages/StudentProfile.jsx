@@ -552,7 +552,7 @@ export default function StudentProfile({ userRole }) {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Bedriftsstorrelse</label>
+                      <label>Bedriftsstørrelse</label>
                       <input
                         type="text"
                         value={companyEditData.size || ''}

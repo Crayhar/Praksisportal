@@ -103,11 +103,11 @@ function prepareCaseForm(form) {
     taskFocus: form.taskFocus?.trim() || roleLabel,
     assignmentContext: form.assignmentContext?.trim() || taskDescription,
     taskDescription,
-    technicalTerms: form.technicalTerms?.trim() || form.professionalQualifications?.trim() || roleLabel,
+    technicalTerms: form.technicalTerms?.trim() || (typeof form.professionalQualifications === 'string' && form.professionalQualifications.trim()) || roleLabel,
     deliveries: form.deliveries?.trim() || scope.deliveries,
     expectations:
       form.expectations?.trim() || `${collaborationExpectation} Arbeidsform: ${workMode}.`,
-    personalQualifications: form.personalQualifications?.trim() || profile.personal,
+    personalQualifications: (typeof form.personalQualifications === 'string' && form.personalQualifications.trim()) || profile.personal,
     startWithin: form.startWithin?.trim() || scope.startWithin,
     maxHours: String(form.maxHours || scope.hours),
     location: location || workMode,
@@ -162,8 +162,6 @@ Oppdrag:
 - Sluttdato: ${formatDate(form.endDate)}
 - Start senest innen: ${form.startWithin}
 - Omfang: ${form.maxHours} timer
-- Lonnstype: ${form.salaryType}
-- Kompensasjon: ${form.compensationAmount}
 - Sakstype vurdert av systemet: ${classification.type}
 - Relevante fag: ${classification.relevantSubjects.join(', ')}
 - Viktigste kvalifikasjon i kravbildet: ${requirementAnalysis.mostImportantQualification}
@@ -390,7 +388,6 @@ function validateForm(form) {
   if (!form.endDate) nextErrors.endDate = 'Sluttdato er påkrevd.';
   if (!form.startWithin.trim()) nextErrors.startWithin = 'Start senest innen er påkrevd.';
   if (!form.maxHours) nextErrors.maxHours = 'Omfang i timer er påkrevd.';
-  if (!form.compensationAmount.trim()) nextErrors.compensationAmount = 'Kompensasjon er påkrevd.';
 
   if (form.startDate && form.endDate && form.startDate > form.endDate) {
     nextErrors.endDate = 'Sluttdato kan ikke være tidligere enn startdato.';
@@ -453,7 +450,7 @@ export default function Chatbot({ userRole }) {
           const draftList = await casesAPI.listDrafts();
           setDrafts(draftList);
           if (draftList.length > 0) {
-            setForm(draftList[0]);
+            setForm(createEmptyCaseDraft(draftList[0]));
           } else {
             setForm(createEmptyCaseDraft({
               website: company.website,
@@ -578,7 +575,7 @@ export default function Chatbot({ userRole }) {
   };
 
   const handleLoadDraft = (draft) => {
-    setForm(draft);
+    setForm(createEmptyCaseDraft(draft));
     setErrors({});
     setStatusMessage(`Fortsetter utkast: ${draft.title || 'Ny sak'}.`);
   };
@@ -1050,41 +1047,6 @@ export default function Chatbot({ userRole }) {
                 />
                 {errors.endDate ? <p className="error-text">{errors.endDate}</p> : null}
               </label>
-
-              {/* <label className="full">
-                Lonnsmodell
-                <div className="case-radio-group compact">
-                  <label className={`case-radio-card ${form.salaryType === 'hourly' ? 'selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="salaryType"
-                      checked={form.salaryType === 'hourly'}
-                      onChange={() => updateField('salaryType', 'hourly')}
-                    />
-                    <span>Timelønn</span>
-                  </label>
-                  <label className={`case-radio-card ${form.salaryType === 'fixed' ? 'selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="salaryType"
-                      checked={form.salaryType === 'fixed'}
-                      onChange={() => updateField('salaryType', 'fixed')}
-                    />
-                    <span>Fastpris</span>
-                  </label>
-                </div>
-              </label>
-
-              <label>
-                Kompensasjon *
-                <input
-                  className="case-input"
-                  value={form.compensationAmount}
-                  onChange={(event) => updateField('compensationAmount', event.target.value)}
-                  placeholder="250"
-                />
-                {errors.compensationAmount ? <p className="error-text">{errors.compensationAmount}</p> : null}
-              </label> */}
             </div>
 
             {revisionSuggestions.length > 0 ? (

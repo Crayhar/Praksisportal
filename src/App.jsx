@@ -69,7 +69,7 @@ function App() {
           <Route path="/apply" element={<Apply userRole={userRole} />} />
           <Route
             path="/profile"
-            element={<ProtectedRoute element={<StudentProfile userRole={userRole} />} role={userRole} requiredRole="student" />}
+            element={<ProtectedRoute element={<StudentProfile userRole={userRole} />} role={userRole} />}
           />
           <Route
             path="/chatbot"
