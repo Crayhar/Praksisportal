@@ -33,10 +33,10 @@ const apiFetch = async (endpoint, options = {}) => {
 
 // Auth endpoints
 export const auth = {
-  signup: (email, password, firstName, lastName, role) =>
+  signup: (email, password, firstName, lastName, role, website) =>
     apiFetch("/api/auth/signup", {
       method: "POST",
-      body: JSON.stringify({ email, password, firstName, lastName, role }),
+      body: JSON.stringify({ email, password, firstName, lastName, role, website }),
     }),
   login: (email, password) =>
     apiFetch("/api/auth/login", {
@@ -123,6 +123,15 @@ export const cases = {
   // Published
   listPublished: () => apiFetch("/api/cases/published"),
   getPublished: (caseId) => apiFetch(`/api/cases/published/${caseId}`),
+  updatePublished: (caseId, data) =>
+    apiFetch(`/api/cases/published/${caseId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deletePublished: (caseId) =>
+    apiFetch(`/api/cases/published/${caseId}`, {
+      method: "DELETE",
+    }),
 };
 
 // Token management
@@ -130,4 +139,11 @@ export const token = {
   set: (authToken) => localStorage.setItem("auth-token", authToken),
   get: () => getToken(),
   remove: () => localStorage.removeItem("auth-token"),
+};
+
+// Notification endpoints (student only)
+export const notifications = {
+  list: () => apiFetch("/api/notifications"),
+  markRead: (id) => apiFetch(`/api/notifications/${id}/read`, { method: "PUT" }),
+  markAllRead: () => apiFetch("/api/notifications/read-all", { method: "PUT" }),
 };

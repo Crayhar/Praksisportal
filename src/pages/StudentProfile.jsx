@@ -1,9 +1,11 @@
 import { useMemo, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
+import { NotificationContext } from '../contexts/NotificationContext';
 import Footer from '../components/Footer';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { studentProfile, companyProfile, cases as casesAPI } from '../utils/api';
+import { exportStudentProfileToPdf } from '../utils/pdfExport';
 
 function formatDate(dateString) {
   if (!dateString) {
@@ -152,30 +154,27 @@ function SkillEditor({ skills, onAdd, onRemove, onLevelChange, loading }) {
 }
 
 function mapPublishedCaseToInternship(item) {
-  // Handle professionalQualifications - could be array (from API) or string (from old data)
-  const qualifications = Array.isArray(item.professionalQualifications)
-    ? item.professionalQualifications
-    : typeof item.professionalQualifications === 'string'
-      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [];
+  const toStringArray = (val) =>
+    Array.isArray(val) ? val : typeof val === 'string' ? val.split(/\n|,/).map((v) => v.trim()).filter(Boolean) : [];
+
+  const requiredQuals = toStringArray(item.requiredQualifications || item.professionalQualifications);
+  const preferredQuals = toStringArray(item.preferredQualifications);
 
   return {
     id: item.id,
     title: item.title,
     company: item.company || 'Bedrift',
+    companyName: item.companyName || item.company || 'Bedrift',
     location: item.location,
     description: item.taskDescription,
     startDate: item.startDate,
     endDate: item.endDate,
     maxHours: item.maxHours,
-    salaryType: item.salaryType,
-    compensationAmount: item.compensationAmount,
-    skills: qualifications,
+    skills: requiredQuals,
+    requiredQualifications: requiredQuals,
+    preferredQualifications: preferredQuals,
     internshipCredits: true,
     classification: item.classification,
-    professionalQualifications: Array.isArray(item.professionalQualifications)
-      ? item.professionalQualifications.join(', ')
-      : item.professionalQualifications || '',
     personalQualifications: Array.isArray(item.personalQualifications)
       ? item.personalQualifications.join(', ')
       : item.personalQualifications || '',
@@ -193,7 +192,8 @@ function mapInternshipToCaseLike(internship) {
     taskDescription: internship.description,
     deliveries: internship.deliveries || '',
     expectations: internship.expectations || '',
-    professionalQualifications: internship.professionalQualifications || internship.skills.join(', '),
+    requiredQualifications: internship.requiredQualifications?.join(', ') || internship.skills.join(', '),
+    preferredQualifications: internship.preferredQualifications?.join(', ') || '',
     personalQualifications: internship.personalQualifications || '',
     startDate: internship.startDate,
     endDate: internship.endDate,
@@ -211,10 +211,39 @@ function mapPublishedCaseToMatch(item, student) {
   };
 }
 
+function formatCompanyData(data) {
+  // Transform snake_case from database to camelCase for frontend
+  return {
+    id: data.id,
+    userId: data.user_id,
+    name: data.name,
+    contactPerson: data.contact_person,
+    email: data.email,
+    phone: data.phone,
+    website: data.website,
+    logo: data.logo,
+    industry: data.industry,
+    size: data.size,
+    location: data.location,
+    description: data.description,
+    registrationComplete: data.registration_complete,
+    expectationsQualityScore: data.expectations_quality_score,
+    companyQualifications: data.companyQualifications || [],
+    workAreas: data.workAreas || [],
+    hiringFocus: data.hiringFocus || [],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
 export default function StudentProfile({ userRole }) {
   const navigate = useNavigate();
   const { userRole: authRole } = useContext(AuthContext);
   const isCompany = authRole === 'company';
+
+  const notifCtx = useContext(NotificationContext);
+  const persistedNotifs = notifCtx?.items ?? [];
+  const notifUnreadCount = notifCtx?.unreadCount ?? 0;
 
   const [student, setStudent] = useState(null);
   const [company, setCompany] = useState(null);
@@ -222,6 +251,7 @@ export default function StudentProfile({ userRole }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
   const [companyEditData, setCompanyEditData] = useState(null);
+  const [notificationsExpanded, setNotificationsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -234,8 +264,9 @@ export default function StudentProfile({ userRole }) {
 
         if (isCompany) {
           const companyData = await companyProfile.get();
-          setCompany(companyData);
-          setCompanyEditData(companyData);
+          const formattedCompany = formatCompanyData(companyData);
+          setCompany(formattedCompany);
+          setCompanyEditData(formattedCompany);
         } else {
           const studentData = await studentProfile.get();
           // Convert API response skills format to UI format
@@ -369,8 +400,10 @@ export default function StudentProfile({ userRole }) {
       setError(null);
 
       if (isCompany) {
-        await companyProfile.update(companyEditData);
-        setCompany(companyEditData);
+        const updatedCompany = await companyProfile.update(companyEditData);
+        const formattedCompany = formatCompanyData(updatedCompany);
+        setCompany(formattedCompany);
+        setCompanyEditData(formattedCompany);
       } else {
         await studentProfile.update(editData);
         setStudent(editData);
@@ -429,6 +462,14 @@ export default function StudentProfile({ userRole }) {
     navigate(`/internships?selected=${id}`);
   };
 
+  const handleDownloadProfilePdf = () => {
+    if (!student) {
+      return;
+    }
+
+    exportStudentProfileToPdf(student, caseMatches, []);
+  };
+
   if (loading) {
     return (
       <main className="student-profile">
@@ -461,15 +502,22 @@ export default function StudentProfile({ userRole }) {
           <div className="profile-avatar">
             <div className="avatar-placeholder">
               {isCompany
-                ? profileData.logo || profileData.name.slice(0, 2).toUpperCase()
-                : `${profileData.firstName.charAt(0)}${profileData.lastName.charAt(0)}`}
+                ? profileData?.logo || (profileData?.name ? profileData.name.slice(0, 2).toUpperCase() : '?')
+                : `${profileData?.firstName?.charAt(0) || '?'}${profileData?.lastName?.charAt(0) || '?'}`}
             </div>
           </div>
           <div className="profile-info">
             {!isEditing ? (
               <>
                 <h1>{displayName}</h1>
-                <p className="bio">{isCompany ? profileData.description : profileData.headline}</p>
+                {isCompany ? (
+                  <p className="bio">{profileData.description}</p>
+                ) : (
+                  <>
+                    {profileData.headline && <p className="bio">{profileData.headline}</p>}
+                    {profileData.bio && <p className="bio bio-secondary">{profileData.bio}</p>}
+                  </>
+                )}
                 <div className="profile-details">
                   <span>📧 {profileData.email || 'Ikke satt'}</span>
                   <span>📱 {profileData.phone || 'Ikke satt'}</span>
@@ -491,6 +539,16 @@ export default function StudentProfile({ userRole }) {
                 >
                   {isCompany ? 'Rediger bedriftsprofil' : 'Rediger studentprofil'}
                 </button>
+                {!isCompany && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleDownloadProfilePdf}
+                    disabled={saving}
+                    style={{ marginLeft: '10px' }}
+                  >
+                    Last ned profil (PDF)
+                  </button>
+                )}
                 {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
               </>
             ) : (
@@ -746,6 +804,76 @@ export default function StudentProfile({ userRole }) {
         </section>
 
         {!isCompany && (
+          <section className="notices notices-persistent">
+            <div className="notices-header">
+              <h2>
+                Varslinger
+                {notifUnreadCount > 0 && (
+                  <span className="notif-count-badge">{notifUnreadCount} ny{notifUnreadCount !== 1 ? 'e' : ''}</span>
+                )}
+              </h2>
+              <div className="notices-actions">
+                {persistedNotifs.length > 0 && notifUnreadCount > 0 && notificationsExpanded && (
+                  <button
+                    className="btn btn-secondary btn-small"
+                    onClick={() => notifCtx.markAllRead()}
+                  >
+                    Merk alle lest
+                  </button>
+                )}
+                {persistedNotifs.length > 0 && (
+                  <button
+                    className="btn btn-secondary btn-small"
+                    onClick={() => setNotificationsExpanded((prev) => !prev)}
+                  >
+                    {notificationsExpanded ? 'Skjul' : 'Vis'} varslinger
+                  </button>
+                )}
+              </div>
+            </div>
+            {persistedNotifs.length === 0 ? (
+              <p className="notices-empty">
+                Ingen varslinger ennå. Du varsles når nye praksisplasser matcher profilen din over {activeStudent?.notificationThreshold ?? 65}%.
+              </p>
+            ) : !notificationsExpanded ? (
+              <p className="notices-empty">
+                {persistedNotifs.length} varslinger totalt. Trykk "Vis varslinger" for detaljer.
+              </p>
+            ) : (
+              <ul className="notif-list">
+                {persistedNotifs.map((n) => (
+                  <li key={n.id} className={`notif-item${n.isRead ? ' notif-read' : ' notif-unread'}`}>
+                    <div className="notif-item-body">
+                      {!n.isRead && <span className="notif-dot" aria-hidden="true" />}
+                      <div className="notif-item-text">
+                        <span className="notif-item-title">{n.caseTitle}</span>
+                        <span className="notif-item-meta">{n.companyName} · {n.matchScore}% match</span>
+                      </div>
+                      <div className="notif-item-actions">
+                        <button
+                          className="btn btn-secondary btn-small"
+                          onClick={() => navigate('/internships')}
+                        >
+                          Se sak
+                        </button>
+                        {!n.isRead && (
+                          <button
+                            className="btn btn-secondary btn-small"
+                            onClick={() => notifCtx.markRead(n.id)}
+                          >
+                            Merk lest
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {!isCompany && (
           <section className="notices">
             <h2>Relevante praksisplasser</h2>
             <p>Basert på profilen din får du varsler når nye praksisplasser matcher dine interesser over varselterskel på {activeStudent?.notificationThreshold}%.</p>
@@ -792,12 +920,6 @@ export default function StudentProfile({ userRole }) {
                     </p>
                     <p className="internship-meta">
                       <strong>Maks timer:</strong> {notice.maxHours}
-                    </p>
-                    <p className="internship-meta">
-                      <strong>Kompensasjon:</strong>{' '}
-                      {notice.salaryType === 'hourly'
-                        ? `Timelønn: ${notice.compensationAmount} NOK/time`
-                        : `Fastpris: ${notice.compensationAmount} NOK`}
                     </p>
                     <button type="button" className="btn btn-primary btn-inline-small">
                       Se mer info

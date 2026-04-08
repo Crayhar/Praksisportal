@@ -10,6 +10,8 @@ export default function Signup() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    companyName: "",
+    website: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -46,9 +48,10 @@ export default function Signup() {
       const data = await auth.signup(
         formData.email,
         formData.password,
-        formData.firstName,
-        formData.lastName,
-        formData.role
+        formData.role === "company" ? formData.companyName : formData.firstName,
+        formData.role === "company" ? "" : formData.lastName,
+        formData.role,
+        formData.role === "company" ? formData.website : undefined
       );
       token.set(data.token);
       setUser(data.user);
@@ -68,29 +71,59 @@ export default function Signup() {
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
 
-          <div className="form-group">
-            <label htmlFor="firstName">Fornavn</label>
-            <input
-              id="firstName"
-              name="firstName"
-              type="text"
-              value={formData.firstName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          {formData.role === "company" ? (
+            <>
+              <div className="form-group">
+                <label htmlFor="companyName">Bedriftsnavn</label>
+                <input
+                  id="companyName"
+                  name="companyName"
+                  type="text"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="lastName">Etternavn</label>
-            <input
-              id="lastName"
-              name="lastName"
-              type="text"
-              value={formData.lastName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+              <div className="form-group">
+                <label htmlFor="website">Nettside</label>
+                <input
+                  id="website"
+                  name="website"
+                  type="url"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="https://"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="form-group">
+                <label htmlFor="firstName">Fornavn</label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="lastName">Etternavn</label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label htmlFor="email">E-post</label>

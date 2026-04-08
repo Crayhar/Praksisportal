@@ -12,13 +12,19 @@ import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { loadStoredJson } from '../utils/storage';
 import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
 
+const OFFERING_LABELS = {
+  workplace: 'Mulighet for jobb etter oppdraget',
+  certification: 'Sertifisering gjennom jobben',
+  mentorship: 'Fast mentor og tett oppfølging',
+  reference: 'Attest / referanse',
+};
+
 function mapPublishedCaseToInternship(item) {
-  // Handle professionalQualifications - could be array (from API) or string (from old data)
-  const qualifications = Array.isArray(item.professionalQualifications)
-    ? item.professionalQualifications
-    : typeof item.professionalQualifications === 'string'
-      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [];
+  const toStringArray = (val) =>
+    Array.isArray(val) ? val : typeof val === 'string' ? val.split(/\n|,/).map((v) => v.trim()).filter(Boolean) : [];
+
+  const requiredQuals = toStringArray(item.requiredQualifications);
+  const preferredQuals = toStringArray(item.preferredQualifications);
 
   return {
     id: item.id,
@@ -30,15 +36,14 @@ function mapPublishedCaseToInternship(item) {
     startDate: item.startDate,
     endDate: item.endDate,
     maxHours: item.maxHours,
-    salaryType: item.salaryType,
-    compensationAmount: item.compensationAmount,
-    skills: qualifications,
-    professionalQualifications: Array.isArray(item.professionalQualifications)
-      ? item.professionalQualifications.join(', ')
-      : item.professionalQualifications || '',
+    skills: requiredQuals,
+    requiredQualifications: requiredQuals,
+    preferredQualifications: preferredQuals,
     personalQualifications: Array.isArray(item.personalQualifications)
       ? item.personalQualifications.join(', ')
       : item.personalQualifications || '',
+    offerings: Array.isArray(item.offerings) ? item.offerings : [],
+    offeringOther: item.offeringOther || '',
     assignmentContext: item.assignmentContext || item.taskDescription,
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
@@ -47,9 +52,11 @@ function mapPublishedCaseToInternship(item) {
     website: item.website || '',
     companySummary: item.generatedAdData?.companySummary || item.companyProfileDescription || item.companyQualifications || '',
     companyDescription: item.companyProfileDescription || item.companyQualifications || '',
-    companyQualifications: item.companyQualifications
-      ? item.companyQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [],
+    companyQualifications: Array.isArray(item.companyQualifications)
+      ? item.companyQualifications
+      : item.companyQualifications
+        ? item.companyQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+        : [],
     workAreas: item.workAreas || [],
     industry: item.industry || '',
     companySize: item.companySize || '',
@@ -64,7 +71,8 @@ function mapInternshipToCaseLike(internship) {
     taskDescription: internship.description,
     deliveries: internship.deliveries || '',
     expectations: internship.expectations || '',
-    professionalQualifications: internship.professionalQualifications || internship.skills.join(', '),
+    requiredQualifications: internship.requiredQualifications?.join(', ') || internship.skills.join(', '),
+    preferredQualifications: internship.preferredQualifications?.join(', ') || '',
     personalQualifications: internship.personalQualifications || '',
     startDate: internship.startDate,
     endDate: internship.endDate,
@@ -224,18 +232,18 @@ export default function Apply({ userRole }) {
       <main>
         <section className="hero hero-short">
           <div className="hero-content">
-            <h1>Publiser praksisannonse</h1>
+            <h1>Publiser praksisprosjekt</h1>
             <p>Denne visningen er laget for studenter som skal sende søknad.</p>
           </div>
         </section>
         <section className="contact section-compact">
           <div className="container container-narrow text-center">
-            <h2 className="section-title-bottom">Bedrifter publiserer via annonseverktøyet</h2>
+            <h2 className="section-title-bottom">Bedrifter publiserer via prosjektverktøyet</h2>
             <p className="section-copy-bottom">
-              Bruk bedriftsflyten for å opprette eller revidere praksisannonser.
+              Bruk bedriftsflyten for å opprette eller revidere praksisprosjekter.
             </p>
             <button type="button" className="btn btn-primary" onClick={() => navigate('/chatbot')}>
-              Gå til annonseverktøyet
+              Gå til prosjektverktøyet
             </button>
           </div>
         </section>
@@ -265,7 +273,7 @@ export default function Apply({ userRole }) {
           <p>
             {selectedInternship
               ? `Du søker nå på ${selectedInternship.title} hos ${selectedInternship.company}.`
-              : 'Velg en annonse fra markedet eller send en generell praksissøknad.'}
+              : 'Velg et prosjekt fra markedet eller send en generell praksissøknad.'}
           </p>
         </div>
       </section>
@@ -273,7 +281,7 @@ export default function Apply({ userRole }) {
       <section className="apply-shell">
         <div className="apply-layout">
           <aside className="apply-panel apply-panel-muted">
-            <h2>Valgt annonse</h2>
+            <h2>Valgt prosjekt</h2>
             {selectedInternship ? (
               <>
                 <p className="apply-copy">
@@ -302,14 +310,43 @@ export default function Apply({ userRole }) {
                   </div>
                 ) : null}
 
-                <div className="apply-panel-space">
-                  <p><strong>Ønskede ferdigheter</strong></p>
-                  <div className="apply-chip-list">
-                    {selectedInternship.skills.map((skill) => (
-                      <span key={skill} className="apply-chip">{skill}</span>
-                    ))}
+                {selectedInternship.requiredQualifications?.length > 0 && (
+                  <div className="apply-panel-space">
+                    <p><strong>Krav – MÅ ha</strong></p>
+                    <div className="apply-chip-list">
+                      {selectedInternship.requiredQualifications.map((skill) => (
+                        <span key={skill} className="apply-chip">{skill}</span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {selectedInternship.preferredQualifications?.length > 0 && (
+                  <div className="apply-panel-space">
+                    <p><strong>Ønskelig – FINT å ha</strong></p>
+                    <div className="apply-chip-list">
+                      {selectedInternship.preferredQualifications.map((skill) => (
+                        <span key={skill} className="apply-chip apply-chip-muted">{skill}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedInternship.offerings?.length > 0 && (
+                  <div className="apply-panel-space">
+                    <p><strong>Bedriften tilbyr</strong></p>
+                    <div className="apply-chip-list">
+                      {selectedInternship.offerings.map((offering) => {
+                        const label = offering === 'other'
+                          ? (selectedInternship.offeringOther || 'Annet')
+                          : (OFFERING_LABELS[offering] || offering);
+                        return (
+                          <span key={offering} className="apply-chip apply-chip-offering">{label}</span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div className="apply-copy-block">
                   <p><strong>Periode:</strong> {selectedInternship.startDate} til {selectedInternship.endDate}</p>
@@ -318,7 +355,7 @@ export default function Apply({ userRole }) {
               </>
             ) : (
               <p className="apply-copy apply-copy-first">
-                Ingen spesifikk annonse er valgt. Gå til markedet eller profilsiden og velg en anbefalt annonse for å få en mer presis søknadsflyt.
+                Ingen spesifikk prosjekt er valgt. Gå til markedet eller profilsiden og velg et anbefalt prosjekt for å få en mer presis søknadsflyt.
               </p>
             )}
 
@@ -383,13 +420,13 @@ export default function Apply({ userRole }) {
                 </label>
 
                 <label className="full">
-                  Hvilken annonse søker du på? *
+                  Hvilket prosjekt søker du på? *
                   <select
                     className="apply-select"
                     value={form.position}
                     onChange={(event) => updateField('position', event.target.value)}
                   >
-                    <option value="">Velg en annonse...</option>
+                    <option value="">Velg et prosjekt...</option>
                     {internshipFeed.map((internship) => (
                       <option key={internship.id} value={internship.title}>
                         {internship.title} - {internship.company}
@@ -442,7 +479,7 @@ export default function Apply({ userRole }) {
               <div className="apply-actions">
                 <button type="submit" className="btn btn-primary">Send søknad</button>
                 <button type="button" className="btn btn-secondary" onClick={() => navigate('/internships')}>
-                  Se flere annonser
+                  Se flere prosjekter
                 </button>
               </div>
             </form>

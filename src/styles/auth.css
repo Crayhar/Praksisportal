@@ -3,23 +3,24 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f0f5f5;
 }
 
 .auth-card {
-  background: white;
+  background: #fff;
   border-radius: 8px;
   padding: 40px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-width: 420px;
+  box-shadow: 0 4px 20px rgba(52, 126, 132, 0.12);
 }
 
 .auth-card h1 {
-  margin: 0 0 30px 0;
-  font-size: 28px;
-  color: #333;
+  margin: 0 0 28px 0;
+  font-size: 1.8rem;
+  color: #347e84;
   text-align: center;
+  font-weight: 700;
 }
 
 .error-message {
@@ -32,12 +33,12 @@
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 500;
   color: #333;
   font-size: 14px;
@@ -46,40 +47,43 @@
 .form-group input,
 .form-group select {
   width: 100%;
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
+  background-color: #fff;
+  color: #333;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #347e84;
+  box-shadow: 0 0 0 3px rgba(52, 126, 132, 0.12);
 }
 
 button[type="submit"] {
   width: 100%;
-  padding: 12px;
-  background-color: #667eea;
-  color: white;
+  padding: 11px;
+  background-color: #347e84;
+  color: #fff;
   border: none;
   border-radius: 4px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.2s;
+  margin-top: 4px;
 }
 
 button[type="submit"]:hover:not(:disabled) {
-  background-color: #5568d3;
+  background-color: #2a666b;
 }
 
 button[type="submit"]:disabled {
-  background-color: #ccc;
+  background-color: #a0c4c7;
   cursor: not-allowed;
 }
 
@@ -91,7 +95,7 @@ button[type="submit"]:disabled {
 }
 
 .auth-card a {
-  color: #667eea;
+  color: #347e84;
   text-decoration: none;
   font-weight: 600;
 }

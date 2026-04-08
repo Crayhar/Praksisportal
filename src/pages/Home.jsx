@@ -8,12 +8,11 @@ import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
 
 function mapPublishedCaseToInternship(item) {
-  // Handle professionalQualifications - could be array (from API) or string (from old data)
-  const qualifications = Array.isArray(item.professionalQualifications)
-    ? item.professionalQualifications
-    : typeof item.professionalQualifications === 'string'
-      ? item.professionalQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [];
+  const toStringArray = (val) =>
+    Array.isArray(val) ? val : typeof val === 'string' ? val.split(/\n|,/).map((v) => v.trim()).filter(Boolean) : [];
+
+  const requiredQuals = toStringArray(item.requiredQualifications || item.professionalQualifications);
+  const preferredQuals = toStringArray(item.preferredQualifications);
 
   return {
     id: item.id,
@@ -25,14 +24,11 @@ function mapPublishedCaseToInternship(item) {
     startDate: item.startDate,
     endDate: item.endDate,
     maxHours: item.maxHours,
-    salaryType: item.salaryType,
-    compensationAmount: item.compensationAmount,
-    skills: qualifications,
+    skills: requiredQuals,
+    requiredQualifications: requiredQuals,
+    preferredQualifications: preferredQuals,
     internshipCredits: true,
     classification: item.classification,
-    professionalQualifications: Array.isArray(item.professionalQualifications)
-      ? item.professionalQualifications.join(', ')
-      : item.professionalQualifications || '',
     personalQualifications: Array.isArray(item.personalQualifications)
       ? item.personalQualifications.join(', ')
       : item.personalQualifications || '',
@@ -44,9 +40,11 @@ function mapPublishedCaseToInternship(item) {
     website: item.website || '',
     companySummary: item.generatedAdData?.companySummary || item.companyProfileDescription || item.companyQualifications || '',
     companyDescription: item.companyProfileDescription || item.companyQualifications || '',
-    companyQualifications: item.companyQualifications
-      ? item.companyQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
-      : [],
+    companyQualifications: Array.isArray(item.companyQualifications)
+      ? item.companyQualifications
+      : item.companyQualifications
+        ? item.companyQualifications.split(/\n|,/).map((value) => value.trim()).filter(Boolean)
+        : [],
     workAreas: item.workAreas || [],
     industry: item.industry || '',
     companySize: item.companySize || '',
@@ -61,7 +59,8 @@ function mapInternshipToCaseLike(internship) {
     taskDescription: internship.description,
     deliveries: internship.deliveries || '',
     expectations: internship.expectations || '',
-    professionalQualifications: internship.professionalQualifications || internship.skills.join(', '),
+    requiredQualifications: internship.requiredQualifications?.join(', ') || internship.skills.join(', '),
+    preferredQualifications: internship.preferredQualifications?.join(', ') || '',
     personalQualifications: internship.personalQualifications || '',
     startDate: internship.startDate,
     endDate: internship.endDate,
@@ -153,10 +152,6 @@ export default function Home({ userRole, setUserRole }) {
   };
 
   const latestInternships = publishedCases.slice(0, 3);
-  const getCompensationSummary = (internship) =>
-    internship.salaryType === 'hourly'
-      ? `Timelønn: ${internship.compensationAmount} NOK/time`
-      : `Fastpris: ${internship.compensationAmount} NOK`;
 
   return (
     <main>
@@ -166,26 +161,13 @@ export default function Home({ userRole, setUserRole }) {
           <h1>{isCompany ? 'Velkommen til bedriftssiden i Praksisportal' : 'Velkommen til Praksisportal'}</h1>
           <p>
             {isCompany
-              ? 'Publiser oppdrag, finn riktige kandidater og bruk AI til å skrive rekrutteringsannonser.'
+              ? 'Publiser oppdrag, finn riktige kandidater og bruk AI til å skrive rekrutteringsprosjekter.'
               : 'Din inngangsport til ekte arbeidserfaring og relevante praksisplasser.'}
           </p>
-          <div className="mock-auth-panel">
-            <p className="mock-auth-label">⚠️ Dette er ikke endelig design - mock-autentisering for testing</p>
-            <div className="mock-auth-buttons">
-              <button type="button" className="btn btn-secondary" onClick={() => setUserRole('guest')}>
-                Ingen innlogging
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setUserRole('student')}>
-                Logg inn som student
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setUserRole('company')}>
-                Logg inn som bedrift
-              </button>
-            </div>
-          </div>
+
           <div className={`hero-actions ${isCompany ? 'hero-actions-company' : ''}`}>
             <Link to={isCompany ? '/Chatbot_test' : '/internships'} className="btn btn-primary">
-              {isCompany ? 'Opprett annonse' : 'Utforsk praksisplasser'}
+              {isCompany ? 'Opprett prosjekt' : 'Utforsk praksisplasser'}
             </Link>
             {isCompany ? (
               <Link to="/profile" className="btn btn-secondary">
@@ -215,7 +197,7 @@ export default function Home({ userRole, setUserRole }) {
               <h3>{isCompany ? 'Enkel publisering' : 'Enkel søknad'}</h3>
               <p>
                 {isCompany
-                  ? 'Opprett og publiser stillingsannonser raskt, med eller uten AI.'
+                  ? 'Opprett og publiser stillingsprosjekter raskt, med eller uten AI.'
                   : 'Søk på stillinger med noen få klikk og følg søknadene dine.'}
               </p>
             </div>
@@ -295,9 +277,6 @@ export default function Home({ userRole, setUserRole }) {
                   <p className="internship-meta">
                     <strong>Periode:</strong> {internship.startDate} til {internship.endDate}
                   </p>
-                  <p className="internship-meta">
-                    <strong>Kompensasjon:</strong> {getCompensationSummary(internship)}
-                  </p>
                   <button type="button" className="btn btn-primary btn-inline-small">
                     Se mer info
                   </button>
@@ -325,11 +304,11 @@ export default function Home({ userRole, setUserRole }) {
           <h2>{isCompany ? 'Klar til å publisere neste oppdrag?' : 'Klar for å starte praksisreisen?'}</h2>
           <p>
             {isCompany
-              ? 'Bruk Praksisportal til å skrive, publisere og følge opp praksisannonser på ett sted.'
+              ? 'Bruk Praksisportal til å skrive, publisere og følge opp praksisprosjekter på ett sted.'
               : 'Bli med tusenvis av studenter som har funnet sin perfekte praksis gjennom Praksisportal.'}
           </p>
           <Link to={isCompany ? '/Chatbot_test' : '/apply'} className="btn btn-primary">
-            {isCompany ? 'Opprett annonse nå' : 'Søk nå'}
+            {isCompany ? 'Opprett prosjekt nå' : 'Søk nå'}
           </Link>
         </div>
       </section>

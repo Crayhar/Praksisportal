@@ -4,9 +4,13 @@ import { pool } from "../db.js";
 
 export const signup = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { email, password, firstName, lastName, role, website } = req.body;
 
-    if (!email || !password || !firstName || !lastName || !role) {
+    if (!email || !password || !firstName || !role) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (role === "student" && !lastName) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -39,8 +43,8 @@ export const signup = async (req, res) => {
       );
     } else if (role === "company") {
       await pool.query(
-        "INSERT INTO company_profiles (user_id, name) VALUES (?, ?)",
-        [userId, firstName]
+        "INSERT INTO company_profiles (user_id, name, website) VALUES (?, ?, ?)",
+        [userId, firstName, website || null]
       );
     }
 

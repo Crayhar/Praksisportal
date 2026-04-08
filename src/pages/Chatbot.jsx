@@ -17,6 +17,7 @@ import {
   classifyCase,
   parseList,
 } from '../utils/caseMatching';
+import { exportCaseToPdf } from '../utils/casePdfExport';
 import { loadStoredJson, saveStoredJson } from '../utils/storage';
 import { cases as casesAPI, companyProfile as companyProfileAPI } from '../utils/api';
 
@@ -77,7 +78,19 @@ const WORK_MODE_OPTIONS = {
   remote: 'Remote',
 };
 
+const OFFERING_OPTIONS = {
+  workplace: 'Mulighet for jobb etter oppdraget',
+  certification: 'Sertifisering gjennom jobben',
+  reference: 'Attest / referanse',
+};
+
 function prepareCaseForm(form, companyProfile) {
+  const getStringValue = (val) => {
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return val.join(', ');
+    return String(val || '');
+  };
+
   const selectedRoleTracks =
     Array.isArray(form.roleTracks) && form.roleTracks.length > 0
       ? form.roleTracks
@@ -92,24 +105,26 @@ function prepareCaseForm(form, companyProfile) {
   const collaborationExpectation =
     COLLABORATION_OPTIONS[form.collaborationStyle] || COLLABORATION_OPTIONS.team;
   const profile = PROFILE_OPTIONS[form.candidateProfile] || PROFILE_OPTIONS.balanced;
-  const location = form.location?.trim() || '';
+  const location = getStringValue(form.location).trim() || '';
   const workMode = WORK_MODE_OPTIONS[form.workMode] || WORK_MODE_OPTIONS.hybrid;
-  const taskDescription = form.taskDescription?.trim() || '';
-  const website = companyProfile?.website?.trim() || form.website?.trim() || '';
+  const taskDescription = getStringValue(form.taskDescription).trim() || '';
+  const website = companyProfile?.website?.trim() || getStringValue(form.website).trim() || '';
 
   return {
     ...form,
     roleTracks: selectedRoleTracks,
     roleTrack: selectedRoleTracks[0],
-    taskFocus: form.taskFocus?.trim() || roleLabel,
-    assignmentContext: form.assignmentContext?.trim() || taskDescription,
+    taskFocus: getStringValue(form.taskFocus).trim() || roleLabel,
+    assignmentContext: getStringValue(form.assignmentContext).trim() || taskDescription,
     taskDescription,
-    technicalTerms: form.technicalTerms?.trim() || (typeof form.professionalQualifications === 'string' && form.professionalQualifications.trim()) || roleLabel,
-    deliveries: form.deliveries?.trim() || scope.deliveries,
+    technicalTerms: getStringValue(form.technicalTerms).trim() || getStringValue(form.requiredQualifications).trim() || roleLabel,
+    deliveries: getStringValue(form.deliveries).trim() || scope.deliveries,
     expectations:
-      form.expectations?.trim() || `${collaborationExpectation} Arbeidsform: ${workMode}.`,
-    personalQualifications: (typeof form.personalQualifications === 'string' && form.personalQualifications.trim()) || profile.personal,
-    startWithin: form.startWithin?.trim() || scope.startWithin,
+      getStringValue(form.expectations).trim() || `${collaborationExpectation} Arbeidsform: ${workMode}.`,
+    personalQualifications: getStringValue(form.personalQualifications).trim() || profile.personal,
+    companyQualifications: getStringValue(form.companyQualifications).trim() || '',
+    professionalQualifications: getStringValue(form.professionalQualifications).trim() || '',
+    startWithin: getStringValue(form.startWithin).trim() || scope.startWithin,
     maxHours: String(form.maxHours || scope.hours),
     location: location || workMode,
   };
@@ -130,7 +145,7 @@ function formatDate(dateString) {
 function buildPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
   const websiteGuidance = form.website
     ? `Bedriften har oppgitt nettsiden ${form.website}. Bruk den som viktig selskapskontekst.`
-    : 'Bedriften har ikke oppgitt nettside. Hvis selskapsnavn og beskrivelse ikke er nok til å skrive en presis annonse, skal du be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.';
+    : 'Bedriften har ikke oppgitt nettside. Hvis selskapsnavn og beskrivelse ikke er nok til å skrive et presis prosjekt, skal du be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.';
   const revisionSection =
     mode === 'revision'
       ? `
@@ -143,7 +158,7 @@ ${form.revisionInstruction || 'Forbedre klarhet og presisjon uten a endre fakta.
       : '';
 
   return `
-Du er en norsk AI-assistent som hjelper en bedrift med å skrive en praksis- eller studentannonse.
+Du er en norsk AI-assistent som hjelper en bedrift med å skrive et praksis- eller studentprosjekt.
 
 Hvis bedriften velger Usikker/annet på Hovedfokus, bruk informasjonen i de andre feltene for å finne det beste fokuset og klassifisere saken.
 
@@ -160,7 +175,8 @@ Oppdrag:
 - Oppgavebeskrivelse: ${form.taskDescription}
 - Leveranser: ${form.deliveries}
 - Forventninger: ${form.expectations}
-- Faglige kvalifikasjoner: ${form.professionalQualifications}
+- Krav (MÅ ha): ${form.requiredQualifications}
+- Ønskelig (FINT å ha): ${form.preferredQualifications || 'Ikke spesifisert'}
 - Personlige kvalifikasjoner: ${form.personalQualifications}
 - Lokasjon: ${form.location}
 - Startdato: ${formatDate(form.startDate)}
@@ -179,6 +195,7 @@ ${revisionSection}
 Svar kun med gyldig JSON i dette formatet:
 {
   "title": "string",
+  "summary": "string",
   "companySummary": "string",
   "assignmentContext": "string",
   "tasks": ["string"],
@@ -194,15 +211,14 @@ Svar kun med gyldig JSON i dette formatet:
     "endDate": "string",
     "startWithin": "string",
     "maxHours": "string",
-    "salaryType": "string",
-    "compensationAmount": "string"
   },
   "closingText": "string",
   "markdown": "string"
 }
 
 Krav:
-- "markdown" skal være en full annonse på norsk med disse delene:
+- "summary" skal være 2-3 setninger som oppsummerer prosjektet for en kortlistevisning. Skal vekke nysgjerrighet og gi studenten nok til å vurdere relevans.
+- "markdown" skal være et fullstendig prosjekt på norsk med disse delene:
   1. Tittel
   2. Kort om bedriften
   3. Oppdragskontekst
@@ -219,7 +235,8 @@ Krav:
 }
 
 function buildFallbackAd(form, classification, requirementAnalysis) {
-  const professionalQualifications = parseList(form.professionalQualifications);
+  const requiredQualifications = parseList(form.requiredQualifications);
+  const preferredQualifications = parseList(form.preferredQualifications);
   const personalQualifications = parseList(form.personalQualifications);
   const needsWebsiteFollowUp =
     !form.website && (!form.companyQualifications.trim() || form.companyQualifications.trim().length < 80);
@@ -245,8 +262,11 @@ ${form.deliveries}
 ${form.expectations}
 
 ### Kvalifikasjoner
-**Faglige kvalifikasjoner**
-${professionalQualifications.length > 0 ? professionalQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
+**Krav – MÅ ha**
+${requiredQualifications.length > 0 ? requiredQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
+
+**Ønskelig – FINT å ha**
+${preferredQualifications.length > 0 ? preferredQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
 
 **Personlige kvalifikasjoner**
 ${personalQualifications.length > 0 ? personalQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
@@ -262,7 +282,6 @@ Viktigste kvalifikasjon i kravbildet: **${requirementAnalysis.mostImportantQuali
 - Slutt: ${formatDate(form.endDate)}
 - Start senest innen: ${form.startWithin}
 - Omfang: ${form.maxHours} timer
-- Kompensasjon: ${form.salaryType === 'hourly' ? `${form.compensationAmount} NOK per time` : `${form.compensationAmount} NOK fastpris`}
 
 ### Avslutning
 Vi ser etter en student som kan bidra med konkrete leveranser og samtidig fa relevant erfaring i en ekte arbeidssituasjon.
@@ -273,12 +292,13 @@ ${needsWebsiteFollowUp ? '\n\n**Merk:** Legg gjerne inn lenke til bedriftens net
 function buildStructuredFallback(form, classification, requirementAnalysis, markdown) {
   return {
     title: form.title || form.taskFocus || 'Studentoppdrag',
+    summary: form.taskDescription ? form.taskDescription.slice(0, 200).trimEnd() + (form.taskDescription.length > 200 ? '…' : '') : '',
     companySummary: form.companyQualifications || '',
     assignmentContext: form.assignmentContext || '',
     tasks: parseList(form.taskDescription),
     deliveries: parseList(form.deliveries),
     expectations: parseList(form.expectations),
-    qualificationsProfessional: parseList(form.professionalQualifications),
+    qualificationsProfessional: [...parseList(form.requiredQualifications), ...parseList(form.preferredQualifications)],
     qualificationsPersonal: parseList(form.personalQualifications),
     targetAudience: classification.type,
     recommendedSubjects: requirementAnalysis.recommendedSubjects || [],
@@ -288,8 +308,6 @@ function buildStructuredFallback(form, classification, requirementAnalysis, mark
       endDate: form.endDate || '',
       startWithin: form.startWithin || '',
       maxHours: String(form.maxHours || ''),
-      salaryType: form.salaryType || '',
-      compensationAmount: String(form.compensationAmount || ''),
     },
     closingText:
       'Vi ser etter en student som kan bidra med konkrete leveranser og samtidig få relevant erfaring i en ekte arbeidssituasjon.',
@@ -382,20 +400,28 @@ function normalizeGeneratedAdPayload(rawResponse, form, classification, requirem
 function validateForm(form) {
   const nextErrors = {};
 
-  if (!form.title.trim()) nextErrors.title = 'Tittel er påkrevd.';
-  if (!form.assignmentContext.trim()) nextErrors.assignmentContext = 'Oppdragskontekst er påkrevd.';
-  if (!form.taskDescription.trim()) nextErrors.taskDescription = 'Oppgavebeskrivelse er påkrevd.';
-  if (!form.deliveries.trim()) nextErrors.deliveries = 'Leveranser er påkrevd.';
-  if (!form.expectations.trim() || form.expectations.trim().length < 30) {
+  // Helper to safely get string value
+  const getStringValue = (val) => {
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return val.join(', ');
+    return String(val || '');
+  };
+
+  if (!getStringValue(form.title).trim()) nextErrors.title = 'Tittel er påkrevd.';
+  if (!getStringValue(form.assignmentContext).trim()) nextErrors.assignmentContext = 'Oppdragskontekst er påkrevd.';
+  if (!getStringValue(form.taskDescription).trim()) nextErrors.taskDescription = 'Oppgavebeskrivelse er påkrevd.';
+  if (!getStringValue(form.deliveries).trim()) nextErrors.deliveries = 'Leveranser er påkrevd.';
+  const expectationsValue = getStringValue(form.expectations).trim();
+  if (!expectationsValue || expectationsValue.length < 30) {
     nextErrors.expectations = 'Legg inn tydelige forventninger. Dette brukes for å forbedre AI-utkastet.';
   }
-  if (!form.companyQualifications.trim()) nextErrors.companyQualifications = 'Beskrivelse av hva bedriften gjør er påkrevd.';
-  if (!form.professionalQualifications.trim()) nextErrors.professionalQualifications = 'Faglige kvalifikasjoner er påkrevd.';
-  if (!form.personalQualifications.trim()) nextErrors.personalQualifications = 'Personlige kvalifikasjoner er påkrevd.';
-  if (!form.location.trim()) nextErrors.location = 'Lokasjon er påkrevd.';
+  if (!getStringValue(form.companyQualifications).trim()) nextErrors.companyQualifications = 'Beskrivelse av hva bedriften gjør er påkrevd.';
+  if (!getStringValue(form.requiredQualifications).trim()) nextErrors.requiredQualifications = 'Minst ett krav (MÅ ha) er påkrevd.';
+  if (!getStringValue(form.personalQualifications).trim()) nextErrors.personalQualifications = 'Personlige kvalifikasjoner er påkrevd.';
+  if (!getStringValue(form.location).trim()) nextErrors.location = 'Lokasjon er påkrevd.';
   if (!form.startDate) nextErrors.startDate = 'Startdato er påkrevd.';
   if (!form.endDate) nextErrors.endDate = 'Sluttdato er påkrevd.';
-  if (!form.startWithin.trim()) nextErrors.startWithin = 'Start senest innen er påkrevd.';
+  if (!getStringValue(form.startWithin).trim()) nextErrors.startWithin = 'Start senest innen er påkrevd.';
   if (!form.maxHours) nextErrors.maxHours = 'Omfang i timer er påkrevd.';
 
   if (form.startDate && form.endDate && form.startDate > form.endDate) {
@@ -424,7 +450,7 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
       : { service: 'google', apiKey: geminiApiKey, model: 'gemini-2.5-flash' }
   );
 
-  llm.system('Du skriver profesjonelle norske student- og praksisannonser basert på strukturerte data.');
+  llm.system('Du skriver profesjonelle norske student- og praksisprosjekter basert på strukturerte data.');
 
   const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, companyProfile, mode), {
     max_tokens: 4096,
@@ -436,7 +462,9 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
 export default function Chatbot({ userRole }) {
   const navigate = useNavigate();
   const { userRole: authRole } = useContext(AuthContext);
+  const canManageCases = authRole === 'company' || authRole === 'admin';
   const isCompany = authRole === 'company';
+  const isAdmin = authRole === 'admin';
 
   const [companyProfile, setCompanyProfile] = useState(null);
   const [drafts, setDrafts] = useState([]);
@@ -446,6 +474,7 @@ export default function Chatbot({ userRole }) {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [initializing, setInitializing] = useState(true);
+  const [fullProjectPreview, setFullProjectPreview] = useState(null);
   const hasGeneratedDraft = Boolean(form.generatedAd);
 
   // Load data from API on mount
@@ -467,25 +496,29 @@ export default function Chatbot({ userRole }) {
               companyQualifications: company.description,
             }));
           }
+        } else {
+          setCompanyProfile(defaultCompanyProfile);
+          setDrafts([]);
         }
+
         const published = await casesAPI.listPublished();
         setPublishedCases(published);
       } catch (err) {
         console.error('Failed to load data:', err);
         setCompanyProfile(defaultCompanyProfile);
-        setDrafts(defaultDrafts);
-        setPublishedCases(defaultPublishedCases);
+        setDrafts([]);
+        setPublishedCases([]);
       } finally {
         setInitializing(false);
       }
     };
 
-    if (isCompany) {
+    if (canManageCases) {
       loadData();
     } else {
       setInitializing(false);
     }
-  }, [isCompany]);
+  }, [canManageCases, isCompany]);
 
   const preparedForm = useMemo(() => prepareCaseForm(form, companyProfile), [form, companyProfile]);
   const classification = useMemo(() => classifyCase(preparedForm), [preparedForm]);
@@ -553,12 +586,27 @@ export default function Chatbot({ userRole }) {
     });
   };
 
+  const toggleOffering = (offering) => {
+    setForm((prev) => {
+      const current = Array.isArray(prev.offerings) ? prev.offerings : [];
+      const next = current.includes(offering)
+        ? current.filter((item) => item !== offering)
+        : [...current, offering];
+      return { ...prev, offerings: next, lastEditedAt: new Date().toISOString() };
+    });
+  };
+
   const syncCurrentDraft = async (nextForm) => {
     try {
-      if (nextForm.id && drafts.some(d => d.id === nextForm.id)) {
+      // If ID is a temporary frontend ID (starts with 'draft-'), always create
+      const idString = String(nextForm.id || '');
+      if (idString.startsWith('draft-')) {
+        const created = await casesAPI.createDraft(nextForm);
+        nextForm.id = created.id;
+      } else if (nextForm.id && drafts.some(d => d.id === nextForm.id)) {
         // Update existing draft
         await casesAPI.updateDraft(nextForm.id, nextForm);
-      } else if (isCompany) {
+      } else if (canManageCases) {
         // Create new draft
         const created = await casesAPI.createDraft(nextForm);
         nextForm.id = created.id;
@@ -585,7 +633,7 @@ export default function Chatbot({ userRole }) {
     });
     setForm(nextDraft);
     setErrors({});
-    setStatusMessage('Ny annonseutforming er startet.');
+    setStatusMessage('Ny prosjektutforming er startet.');
     setDrafts((prev) => [nextDraft, ...prev]);
   };
 
@@ -595,15 +643,122 @@ export default function Chatbot({ userRole }) {
     setStatusMessage(`Fortsetter utkast: ${draft.title || 'Ny sak'}.`);
   };
 
+  const handleDeleteDraft = async (draft) => {
+    const shouldDelete = window.confirm(
+      `Er du sikker på at du vil slette utkastet "${draft.title || 'Ny sak'}"? Dette kan ikke angres.`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const idString = String(draft.id || '');
+      if (!idString.startsWith('draft-')) {
+        await casesAPI.deleteDraft(draft.id);
+      }
+
+      setDrafts((prev) => prev.filter((item) => item.id !== draft.id));
+
+      if (form.id === draft.id) {
+        setForm(createEmptyCaseDraft({
+          website: companyProfile?.website,
+          logo: companyProfile?.logo,
+          companyQualifications: companyProfile?.description,
+        }));
+      }
+
+      setStatusMessage('Utkastet er slettet.');
+    } catch (err) {
+      console.error('Failed to delete draft:', err);
+      if (err.message.includes('Not authorized')) {
+        setStatusMessage('Du kan ikke slette dette utkastet.');
+      } else {
+        setStatusMessage('Kunne ikke slette utkastet. Prøv igjen.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const canManagePublishedCase = (publishedCase) =>
+    isAdmin || publishedCase.companyId === companyProfile?.id;
+
   const handleLoadPublishedCase = (publishedCase) => {
+    // Verify ownership before allowing load
+    if (!canManagePublishedCase(publishedCase)) {
+      setStatusMessage('Du kan ikke redigere denne saken. Den tilhører en annen bedrift.');
+      return;
+    }
     setForm(publishedCase);
     setErrors({});
-    setStatusMessage(`Redigerer publisert sak: ${publishedCase.title || 'Ny sak'}. Publiser igjen for å oppdatere annonsen.`);
+    setStatusMessage(`Redigerer publisert sak: ${publishedCase.title || 'Ny sak'}. Publiser igjen for å oppdatere prosjektet.`);
+  };
+
+  const handleDeletePublishedCase = async (publishedCase) => {
+    if (!canManagePublishedCase(publishedCase)) {
+      setStatusMessage('Du kan ikke slette denne saken. Den tilhører en annen bedrift.');
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Er du sikker på at du vil slette "${publishedCase.title || 'denne saken'}"? Dette kan ikke angres.`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await casesAPI.deletePublished(publishedCase.id);
+      setPublishedCases((prev) => prev.filter((item) => item.id !== publishedCase.id));
+
+      if (form.id === publishedCase.id) {
+        setForm(createEmptyCaseDraft({
+          website: companyProfile?.website,
+          logo: companyProfile?.logo,
+          companyQualifications: companyProfile?.description,
+        }));
+      }
+
+      setStatusMessage('Saken er slettet.');
+    } catch (err) {
+      console.error('Failed to delete published case:', err);
+      if (err.message.includes('Not authorized')) {
+        setStatusMessage('Du kan ikke slette denne saken. Den tilhører en annen bedrift.');
+      } else {
+        setStatusMessage('Kunne ikke slette saken. Proev igjen.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportCasePdf = (caseItem) => {
+    const base = prepareCaseForm(caseItem, companyProfile);
+    exportCaseToPdf(base, companyProfile);
+    setStatusMessage('PDF er generert og lastes ned i nettleseren.');
+  };
+
+  const handleOpenFullProject = (caseItem) => {
+    const base = prepareCaseForm(caseItem, companyProfile);
+    const fullProjectText =
+      base.generatedAdData?.markdown ||
+      base.generatedAd ||
+      buildFallbackAd(base, classifyCase(base), analyzeCaseRequirements(base));
+
+    setFullProjectPreview({
+      title: base.title || base.taskFocus || 'Studentprosjekt',
+      status: base.status === 'published' ? 'Publisert' : 'Utkast',
+      fullProjectText,
+    });
   };
 
   const handleSaveDraft = () => {
     const nextDraft = {
-      ...preparedForm,
+      ...form,
       classification,
       requirementAnalysis,
       suggestions: revisionSuggestions,
@@ -623,7 +778,8 @@ export default function Chatbot({ userRole }) {
 
   const persistGeneratedDraft = (generatedAd, generatedAdData, nextStatusMessage) => {
     const nextDraft = {
-      ...preparedForm,
+      ...form,
+      title: generatedAdData?.title || form.title,
       generatedAd,
       generatedAdData,
       classification,
@@ -648,7 +804,7 @@ export default function Chatbot({ userRole }) {
     }
 
     setLoading(true);
-    setStatusMessage('Systemet genererer annonseutkast og vurderer match mot studentprofilen.');
+    setStatusMessage('Systemet genererer prosjektutkast og vurderer match mot studentprofilen.');
 
     try {
       const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, companyProfile, 'initial');
@@ -713,9 +869,11 @@ export default function Chatbot({ userRole }) {
       return;
     }
 
+    setLoading(true);
+
     const publishedCase = {
-      ...preparedForm,
-      title: preparedForm.title || preparedForm.taskFocus,
+      ...form,
+      title: form.title || preparedForm.taskFocus,
       companyName: companyProfile.name,
       companyLogo: companyProfile.logo,
       industry: companyProfile.industry,
@@ -740,14 +898,42 @@ export default function Chatbot({ userRole }) {
         ),
     };
 
-    setPublishedCases((prev) => [publishedCase, ...prev.filter((item) => item.id !== publishedCase.id)]);
-    setDrafts((prev) => prev.filter((draft) => draft.id !== publishedCase.id));
-    setForm(publishedCase);
-    setStatusMessage(
-      isEditingPublishedCase
-        ? 'Den publiserte saken er oppdatert.'
-        : 'Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.'
-    );
+    try {
+      let caseId = form.id;
+      const idString = String(form.id || '');
+
+      // If editing existing published case, update it
+      if (isEditingPublishedCase && form.id && !idString.startsWith('draft-')) {
+        await casesAPI.updatePublished(form.id, publishedCase);
+      } else if (form.id && drafts.some(d => d.id === form.id) && !idString.startsWith('draft-')) {
+        // Publish existing draft
+        await casesAPI.publishDraft(form.id);
+      } else {
+        // Create new draft first, then publish
+        const created = await casesAPI.createDraft(publishedCase);
+        caseId = created.id;
+        // Now publish it
+        await casesAPI.publishDraft(caseId);
+      }
+
+      setPublishedCases((prev) => [publishedCase, ...prev.filter((item) => item.id !== publishedCase.id)]);
+      setDrafts((prev) => prev.filter((draft) => draft.id !== caseId));
+      setForm(publishedCase);
+      setStatusMessage(
+        isEditingPublishedCase
+          ? 'Den publiserte saken er oppdatert.'
+          : 'Saken er publisert. Studenten kan nå motta matchvarsling på profilsiden.'
+      );
+    } catch (err) {
+      console.error('Failed to publish case:', err);
+      if (err.message.includes('Not authorized')) {
+        setStatusMessage('Du kan ikke redigere denne saken. Den tilhører en annen bedrift.');
+      } else {
+        setStatusMessage('Kunne ikke publisere saken. Sjekk internettforbindelsen.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (initializing) {
@@ -760,13 +946,13 @@ export default function Chatbot({ userRole }) {
     );
   }
 
-  if (!isCompany) {
+  if (!canManageCases) {
     return (
       <main className="chatbot-locked-shell">
         <section className="profile-section">
           <h1 className="chatbot-locked-title">AI-verktøy for bedrifter</h1>
           <p className="chatbot-locked-copy chatbot-locked-copy-spaced">
-            Denne visningen er laget for bedrifter som skal registrere seg, opprette en studentsak og generere annonsetekst.
+            Denne visningen er laget for bedrifter som skal registrere seg, opprette et studentprosjekt og generere prosjekttekst.
           </p>
           <p className="chatbot-locked-copy">
             Bytt mock-innlogging til bedrift fra forsiden for å teste flyten. Studenten har allerede en dummyprofil med
@@ -802,7 +988,7 @@ export default function Chatbot({ userRole }) {
         </h1>
         <p className="case-intro-copy">
           Bedriften registrerer kontekst, tekniske begreper, leveranser, forventninger og krav. Systemet vurderer
-          sakstype, finner relevante fag og rangerer hvilke kvalifikasjoner som er viktigst i annonsen.
+          sakstype, finner relevante fag og rangerer hvilke kvalifikasjoner som er viktigst i prosjektet.
         </p>
       </section>
 
@@ -825,67 +1011,128 @@ export default function Chatbot({ userRole }) {
             <button type="button" className="secondary-action" onClick={handleSaveDraft}>
               Lagre utkast
             </button>
+            <button type="button" className="secondary-action" onClick={() => handleOpenFullProject(form)}>
+              Se hele prosjektet
+            </button>
+            <button type="button" className="secondary-action" onClick={() => handleExportCasePdf(form)}>
+              Last ned PDF
+            </button>
           </div>
 
           <div className="draft-list">
             {drafts.map((draft) => (
-              <button
-                type="button"
+              <div
                 key={draft.id}
                 className={`draft-button ${draft.id === form.id ? 'active' : ''}`}
-                onClick={() => handleLoadDraft(draft)}
               >
-                <strong className="draft-title">{draft.title || 'Ny upublisert sak'}</strong>
-                <span className="muted draft-meta">
-                  Sist redigert {formatDate(draft.lastEditedAt)}
-                </span>
-                <span className="muted">{draft.startWithin || 'Ingen oppstart lagt inn'}</span>
-              </button>
+                <button
+                  type="button"
+                  style={{ all: 'unset', cursor: 'pointer', display: 'block' }}
+                  onClick={() => handleLoadDraft(draft)}
+                >
+                  <strong className="draft-title">{draft.title || 'Ny upublisert sak'}</strong>
+                  <span className="muted draft-meta">
+                    Sist redigert {formatDate(draft.lastEditedAt)}
+                  </span>
+                  <span className="muted">{draft.startWithin || 'Ingen oppstart lagt inn'}</span>
+                </button>
+                <div style={{ marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => handleOpenFullProject(draft)}
+                    disabled={loading}
+                    style={{ marginRight: '8px' }}
+                  >
+                    Se hele prosjektet
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => handleExportCasePdf(draft)}
+                    disabled={loading}
+                    style={{ marginRight: '8px' }}
+                  >
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => handleDeleteDraft(draft)}
+                    disabled={loading}
+                  >
+                    Slett utkast
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
 
           <h3 className="section-title-top">Publiserte saker</h3>
           <div className="draft-list">
-            {publishedCases.map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                className={`draft-button ${item.id === form.id ? 'active' : ''}`}
-                onClick={() => handleLoadPublishedCase(item)}
-              >
-                <strong className="draft-title">{item.title}</strong>
-                <span className="muted draft-meta">
-                  Publisert {formatDate(item.publishedAt)}
-                </span>
-                <span className="muted">
-                  Klikk for å redigere annonsen
-                </span>
-              </button>
-            ))}
+            {publishedCases
+              .filter((item) => isAdmin || item.companyId === companyProfile?.id)
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className={`draft-button ${item.id === form.id ? 'active' : ''}`}
+                >
+                  <button
+                    type="button"
+                    style={{ all: 'unset', cursor: 'pointer', display: 'block' }}
+                    onClick={() => handleLoadPublishedCase(item)}
+                  >
+                    <strong className="draft-title">{item.title}</strong>
+                    <span className="muted draft-meta">
+                      Publisert {formatDate(item.publishedAt)}
+                    </span>
+                    <span className="muted">
+                      Klikk for å redigere prosjektet
+                    </span>
+                  </button>
+                  {canManagePublishedCase(item) ? (
+                    <div style={{ marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={() => handleOpenFullProject(item)}
+                        disabled={loading}
+                        style={{ marginRight: '8px' }}
+                      >
+                        Se hele prosjektet
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={() => handleExportCasePdf(item)}
+                        disabled={loading}
+                        style={{ marginRight: '8px' }}
+                      >
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-action"
+                        onClick={() => handleDeletePublishedCase(item)}
+                        disabled={loading}
+                      >
+                        Slett sak
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
           </div>
         </aside>
 
         <div className="case-main-column">
           <section className="case-panel">
-            {statusMessage ? <div className="case-status">{statusMessage}</div> : null}
-
             <div className="case-form-header">
               <div>
-                <h2>Lag annonse</h2>
+                <h2>Lag Studentprosjekt</h2>
                 <p className="muted case-panel-top-copy">
                   Fyll inn en kort brief. Resten blir strukturert automatisk for AI-utkastet.
                 </p>
-              </div>
-              <div className="case-form-header-actions">
-                <button type="button" className="primary-action" onClick={handleGenerateFirstDraft} disabled={loading}>
-                  {loading ? 'Genererer...' : 'Generer utkast'}
-                </button>
-                <button type="button" className="secondary-action" onClick={handlePublish}>
-                  {isEditingPublishedCase ? 'Oppdater publisert sak' : 'Publiser sak'}
-                </button>
-                <button type="button" className="secondary-action" onClick={handleSaveDraft}>
-                  Lagre
-                </button>
               </div>
             </div>
 
@@ -963,16 +1210,62 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Viktige ferdigheter / teknologi *
+                Krav – MÅ ha *
                 <textarea
-                  className={`case-textarea ${errors.professionalQualifications ? 'case-input-error' : ''}`}
-                  value={form.professionalQualifications}
-                  onChange={(event) => updateField('professionalQualifications', event.target.value)}
-                  placeholder="For eksempel React, SQL, Figma, API, analyse. Skill med komma."
-                  aria-invalid={Boolean(errors.professionalQualifications)}
+                  className={`case-textarea ${errors.requiredQualifications ? 'case-input-error' : ''}`}
+                  value={Array.isArray(form.requiredQualifications) ? form.requiredQualifications.join(', ') : (form.requiredQualifications || '')}
+                  onChange={(event) => updateField('requiredQualifications', event.target.value)}
+                  placeholder="For eksempel Python, SQL, Figma. Skill med komma."
+                  aria-invalid={Boolean(errors.requiredQualifications)}
                 />
-                {errors.professionalQualifications ? <p className="error-text">{errors.professionalQualifications}</p> : null}
+                {errors.requiredQualifications ? <p className="error-text">{errors.requiredQualifications}</p> : null}
               </label>
+
+              <label className="full">
+                Ønskelig – FINT å ha
+                <textarea
+                  className="case-textarea"
+                  value={Array.isArray(form.preferredQualifications) ? form.preferredQualifications.join(', ') : (form.preferredQualifications || '')}
+                  onChange={(event) => updateField('preferredQualifications', event.target.value)}
+                  placeholder="For eksempel React, TypeScript, erfaring fra agile team. Skill med komma."
+                />
+              </label>
+
+              <div className="full">
+                <span>Hva kan vi tilby studenten?</span>
+                <div className="case-radio-group compact" style={{ marginTop: '0.5rem' }}>
+                  {Object.entries(OFFERING_OPTIONS).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={`case-radio-card ${(Array.isArray(form.offerings) ? form.offerings : []).includes(value) ? 'selected' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(Array.isArray(form.offerings) ? form.offerings : []).includes(value)}
+                        onChange={() => toggleOffering(value)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                  <label className={`case-radio-card ${(Array.isArray(form.offerings) ? form.offerings : []).includes('other') ? 'selected' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={(Array.isArray(form.offerings) ? form.offerings : []).includes('other')}
+                      onChange={() => toggleOffering('other')}
+                    />
+                    <span>Annet</span>
+                  </label>
+                </div>
+                {(Array.isArray(form.offerings) ? form.offerings : []).includes('other') && (
+                  <input
+                    className="case-input"
+                    style={{ marginTop: '0.5rem' }}
+                    value={form.offeringOther || ''}
+                    onChange={(event) => updateField('offeringOther', event.target.value)}
+                    placeholder="Beskriv hva dere tilbyr..."
+                  />
+                )}
+              </div>
 
               <label className="full">
                 Kandidatprofil
@@ -1096,6 +1389,26 @@ export default function Chatbot({ userRole }) {
               <h3>Viktigste kvalifikasjon</h3>
               <p className="muted">{requirementAnalysis.mostImportantQualification}</p>
             </div>
+
+            <div className="case-form-header-actions">
+              <button type="button" className="primary-action" onClick={handleGenerateFirstDraft} disabled={loading}>
+                {loading ? 'Genererer...' : 'Generer utkast'}
+              </button>
+              <button type="button" className="secondary-action" onClick={handlePublish}>
+                {isEditingPublishedCase ? 'Oppdater publisert sak' : 'Publiser sak'}
+              </button>
+              <button type="button" className="secondary-action" onClick={handleSaveDraft}>
+                Lagre
+              </button>
+              <button type="button" className="secondary-action" onClick={() => handleOpenFullProject(form)}>
+                Se hele prosjektet
+              </button>
+              <button type="button" className="secondary-action" onClick={() => handleExportCasePdf(form)}>
+                Last ned PDF
+              </button>
+            </div>
+            <br />
+            {statusMessage ? <div className="case-status">{statusMessage}</div> : null}
           </section>
 
           <section className="case-panel preview case-preview-panel">
@@ -1127,7 +1440,7 @@ export default function Chatbot({ userRole }) {
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.generatedAd}</ReactMarkdown>
                 ) : (
                   <p className="muted">
-                    Generer utkast for a se annonsetekst, sakstype, scoringsgrunnlag og revisjonsmuligheter.
+                    Generer utkast for a se prosjekttekst, sakstype, scoringsgrunnlag og revisjonsmuligheter.
                   </p>
                 )}
               </div>
@@ -1155,6 +1468,38 @@ export default function Chatbot({ userRole }) {
           </section>
         </div>
       </div>
+
+      {fullProjectPreview ? (
+        <div className="modal-backdrop" onClick={() => setFullProjectPreview(null)} role="presentation">
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="full-project-modal-title"
+          >
+            <button type="button" className="modal-close" onClick={() => setFullProjectPreview(null)} aria-label="Lukk detaljvisning">
+              ×
+            </button>
+
+            <p className="modal-eyebrow">{fullProjectPreview.status}</p>
+            <h2 id="full-project-modal-title">{fullProjectPreview.title}</h2>
+
+            <div className="modal-panel modal-full-ad-panel">
+              <h3>Hele prosjektet</h3>
+              <div className="modal-full-ad">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{fullProjectPreview.fullProjectText}</ReactMarkdown>
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setFullProjectPreview(null)}>
+                Lukk
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

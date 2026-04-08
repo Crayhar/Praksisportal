@@ -4,9 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 function buildFallbackFullAd(internship) {
-  const professionalQualifications = internship.professionalQualifications
-    ? internship.professionalQualifications.split(/\n|,/).map((item) => item.trim()).filter(Boolean)
-    : internship.skills || [];
+  const requiredQualifications = internship.requiredQualifications || internship.skills || [];
+  const preferredQualifications = internship.preferredQualifications || [];
   const personalQualifications = internship.personalQualifications
     ? internship.personalQualifications.split(/\n|,/).map((item) => item.trim()).filter(Boolean)
     : [];
@@ -32,8 +31,11 @@ ${internship.deliveries || 'Leveranser avtales nærmere med bedriften.'}
 ${internship.expectations || 'Forventninger konkretiseres videre i dialog med bedriften.'}
 
 ### Kvalifikasjoner
-**Faglige kvalifikasjoner**
-${professionalQualifications.length > 0 ? professionalQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
+**Krav – MÅ ha**
+${requiredQualifications.length > 0 ? requiredQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
+
+**Ønskelig – FINT å ha**
+${preferredQualifications.length > 0 ? preferredQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
 
 **Personlige kvalifikasjoner**
 ${personalQualifications.length > 0 ? personalQualifications.map((item) => `- ${item}`).join('\n') : '- Ikke spesifisert'}
@@ -44,7 +46,6 @@ ${personalQualifications.length > 0 ? personalQualifications.map((item) => `- ${
 - Sluttdato: ${internship.endDate}
 - Start senest innen: ${internship.startWithin || 'Avtales nærmere'}
 - Omfang: ${internship.maxHours} timer
-- Kompensasjon: ${internship.salaryType === 'hourly' ? `${internship.compensationAmount} NOK per time` : `${internship.compensationAmount} NOK fastpris`}
 `.trim();
 }
 
@@ -54,8 +55,8 @@ function sanitizeFullAd(markdown) {
   }
 
   return markdown
-    .replace(/^Her er et utkast til annonsen basert pa informasjonen du ga:\s*/i, '')
-    .replace(/^Her er et utkast til annonsen basert på informasjonen du ga:\s*/i, '')
+    .replace(/^Her er et utkast til prosjektet basert pa informasjonen du ga:\s*/i, '')
+    .replace(/^Her er et utkast til prosjektet basert på informasjonen du ga:\s*/i, '')
     .trim();
 }
 
@@ -77,10 +78,6 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
   const fullAd = sanitizeFullAd(
     internship.generatedAdData?.markdown || internship.generatedAd || buildFallbackFullAd(internship)
   );
-  const compensationLabel =
-    internship.salaryType === 'hourly'
-      ? `Timelønn: ${internship.compensationAmount} NOK per time`
-      : `Fastpris: ${internship.compensationAmount} NOK`;
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
@@ -99,7 +96,7 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
         {isStudent && internship.matchSummary ? (
           <div className="match-summary match-summary-modal">
             <div className="match-summary-copy">
-              <p className="match-summary-kicker">Din match med annonsen</p>
+              <p className="match-summary-kicker">Din match med prosjektet</p>
               <p className="match-summary-title">
                 Beste treff: {internship.matchSummary.rankedSkillMatches[0]?.name || internship.matchSummary.topQualification}
               </p>
@@ -116,30 +113,28 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
         <p className="modal-company">🏢 {internship.company}</p>
         <p className="modal-location">📍 {internship.location}</p>
 
-        {isStudent ? (
-          <div className="modal-view-switch">
-            <button
-              type="button"
-              className={`modal-view-button ${viewMode === 'summary' ? 'active' : ''}`}
-              onClick={() => setViewMode('summary')}
-            >
-              Sammendrag
-            </button>
-            <button
-              type="button"
-              className={`modal-view-button ${viewMode === 'full' ? 'active' : ''}`}
-              onClick={() => setViewMode('full')}
-            >
-              Se hele annonsen
-            </button>
-          </div>
-        ) : null}
+        <div className="modal-view-switch">
+          <button
+            type="button"
+            className={`modal-view-button ${viewMode === 'summary' ? 'active' : ''}`}
+            onClick={() => setViewMode('summary')}
+          >
+            Sammendrag
+          </button>
+          <button
+            type="button"
+            className={`modal-view-button ${viewMode === 'full' ? 'active' : ''}`}
+            onClick={() => setViewMode('full')}
+          >
+            Se hele prosjektet
+          </button>
+        </div>
 
         <div className="modal-layout">
           <div className="modal-main">
             {viewMode === 'full' ? (
               <div className="modal-panel modal-full-ad-panel">
-                <h3>Hele annonsen</h3>
+                <h3>Hele prosjektet</h3>
                 <div className="modal-full-ad">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{fullAd}</ReactMarkdown>
                 </div>
@@ -148,15 +143,13 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
               <>
                 <div className="modal-grid">
                   <div className="modal-panel">
-                    <h3>Om annonsen</h3>
-                    <p>{internship.description}</p>
+                    <h3>Om prosjektet</h3>
+                    <p>{internship.generatedAdData?.summary || internship.description}</p>
                   </div>
                   <div className="modal-panel">
                     <h3>Praktisk informasjon</h3>
                     <p><strong>Oppstart:</strong> {internship.startDate}</p>
                     <p><strong>Sluttdato:</strong> {internship.endDate}</p>
-                    <p><strong>Maks antall timer:</strong> {internship.maxHours}</p>
-                    <p><strong>Kompensasjon:</strong> {compensationLabel}</p>
                     <p>
                       <strong>Arbeidsform:</strong> {internship.location.toLowerCase().includes('remote') ? 'Fjernarbeid eller hybrid' : 'Oppmøte hos bedriften'}
                     </p>
@@ -164,8 +157,16 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
                 </div>
 
                 <div className="modal-panel">
-                  <h3>Ønskede ferdigheter</h3>
-                  <p>{internship.skills.join(', ')}</p>
+                  <h3>Kvalifikasjoner</h3>
+                  {internship.requiredQualifications?.length > 0 && (
+                    <p><strong>MÅ ha:</strong> {internship.requiredQualifications.join(', ')}</p>
+                  )}
+                  {internship.preferredQualifications?.length > 0 && (
+                    <p><strong>FINT å ha:</strong> {internship.preferredQualifications.join(', ')}</p>
+                  )}
+                  {!internship.requiredQualifications?.length && !internship.preferredQualifications?.length && (
+                    <p>{internship.skills.join(', ')}</p>
+                  )}
                   <p>
                     <strong>Relevant for praksispoeng:</strong> {internship.internshipCredits ? 'Ja' : 'Nei'}
                   </p>
@@ -187,11 +188,11 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
                 </div>
 
                 <div className="modal-panel">
-                  <h3>{isCompany ? 'Hvorfor denne annonsen fungerer' : 'Hvorfor denne praksisen kan passe deg'}</h3>
+                  <h3>{isCompany ? 'Hvorfor dette prosjektet fungerer' : 'Hvorfor denne praksisen kan passe deg'}</h3>
                   <p>
                     {isCompany
-                      ? 'Denne annonsen kombinerer tydelig rollebeskrivelse, sted og varighet. Du kan bruke den som utgangspunkt for å skrive en bedre eller mer presis annonse.'
-                      : 'Annonsen gir en konkret rollebeskrivelse og tydelig praktisk informasjon, slik at du raskt kan vurdere om praksisplassen passer ferdighetene og målene dine.'}
+                      ? 'Dette prosjektet kombinerer tydelig rollebeskrivelse, sted og varighet. Du kan bruke det som utgangspunkt for å skrive et bedre eller mer presist prosjekt.'
+                      : 'Prosjektet gir en konkret rollebeskrivelse og tydelig praktisk informasjon, slik at du raskt kan vurdere om praksisplassen passer ferdighetene og målene dine.'}
                   </p>
                 </div>
               </>
@@ -241,7 +242,7 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
             className="btn btn-primary"
             onClick={onClose}
           >
-            {isCompany ? 'Lag lignende annonse' : 'Søk på annonsen'}
+            {isCompany ? 'Lag lignende prosjekt' : 'Søk på prosjektet'}
           </Link>
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Lukk

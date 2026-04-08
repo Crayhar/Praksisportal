@@ -248,7 +248,49 @@ export const updateCompanyProfile = async (req, res) => {
       [name, contactPerson, email, phone, website, logo, industry, size, location, description, registrationComplete, expectationsQualityScore, req.userId]
     );
 
-    res.json({ message: "Company profile updated successfully" });
+    // Fetch and return the updated profile
+    const [profiles] = await pool.query(
+      "SELECT * FROM company_profiles WHERE user_id = ?",
+      [req.userId]
+    );
+
+    if (profiles.length === 0) {
+      return res.status(404).json({ error: "Company profile not found" });
+    }
+
+    const profile = profiles[0];
+
+    // Fetch qualifications by type
+    const [qualifications] = await pool.query(
+      "SELECT qualification_type, value FROM company_qualifications WHERE company_id = ?",
+      [profile.id]
+    );
+
+    // Organize qualifications by type
+    const organizedQuals = {
+      companyQualifications: [],
+      workAreas: [],
+      hiringFocus: [],
+    };
+
+    qualifications.forEach((qual) => {
+      switch (qual.qualification_type) {
+        case "core_qualification":
+          organizedQuals.companyQualifications.push(qual.value);
+          break;
+        case "work_area":
+          organizedQuals.workAreas.push(qual.value);
+          break;
+        case "hiring_focus":
+          organizedQuals.hiringFocus.push(qual.value);
+          break;
+      }
+    });
+
+    res.json({
+      ...profile,
+      ...organizedQuals,
+    });
   } catch (error) {
     console.error("updateCompanyProfile error:", error);
     res.status(500).json({ error: "Failed to update company profile" });

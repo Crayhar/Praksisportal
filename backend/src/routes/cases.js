@@ -8,6 +8,8 @@ import {
   publishDraft,
   listPublishedCases,
   getPublishedCase,
+  updatePublishedCase,
+  deletePublishedCase,
 } from "../controllers/cases.js";
 import { verifyToken } from "../middleware/auth.js";
 
@@ -21,8 +23,10 @@ router.put("/drafts/:draftId", verifyToken, updateDraft);
 router.delete("/drafts/:draftId", verifyToken, deleteDraft);
 router.post("/drafts/:draftId/publish", verifyToken, publishDraft);
 
-// Published cases routes (public read, company write)
+// Published cases routes (public read, authenticated write)
 router.get("/published", listPublishedCases);
 router.get("/published/:caseId", getPublishedCase);
+router.put("/published/:caseId", verifyToken, updatePublishedCase);
+router.delete("/published/:caseId", verifyToken, deletePublishedCase);
 
 export default router;

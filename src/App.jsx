@@ -9,6 +9,7 @@ import StudentProfile from './pages/StudentProfile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { auth, token as tokenUtils } from './utils/api';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 export const AuthContext = createContext(null);
 
@@ -16,8 +17,11 @@ function ProtectedRoute({ element, role, requiredRole }) {
   if (!role) {
     return <Navigate to="/login" />;
   }
-  if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/" />;
+  if (requiredRole) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowedRoles.includes(role)) {
+      return <Navigate to="/" />;
+    }
   }
   return element;
 }
@@ -59,25 +63,27 @@ function App() {
 
   return (
     <AuthContext.Provider value={{ user, userRole, setUser, setUserRole, handleLogout }}>
-      <Router>
-        <Navigation userRole={userRole} user={user} onLogout={handleLogout} />
-        <Routes>
-          <Route path="/" element={<Home userRole={userRole} setUserRole={setUserRole} />} />
-          <Route path="/login" element={userRole ? <Navigate to="/" /> : <Login />} />
-          <Route path="/signup" element={userRole ? <Navigate to="/" /> : <Signup />} />
-          <Route path="/internships" element={<Internships userRole={userRole} />} />
-          <Route path="/apply" element={<Apply userRole={userRole} />} />
-          <Route
-            path="/profile"
-            element={<ProtectedRoute element={<StudentProfile userRole={userRole} />} role={userRole} />}
-          />
-          <Route
-            path="/chatbot"
-            element={<ProtectedRoute element={<Chatbot userRole={userRole} />} role={userRole} requiredRole="company" />}
-          />
-          <Route path="/Chatbot_test" element={<ProtectedRoute element={<Chatbot userRole={userRole} />} role={userRole} />} />
-        </Routes>
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <Navigation userRole={userRole} user={user} onLogout={handleLogout} />
+          <Routes>
+            <Route path="/" element={<Home userRole={userRole} setUserRole={setUserRole} />} />
+            <Route path="/login" element={userRole ? <Navigate to="/" /> : <Login />} />
+            <Route path="/signup" element={userRole ? <Navigate to="/" /> : <Signup />} />
+            <Route path="/internships" element={<Internships userRole={userRole} />} />
+            <Route path="/apply" element={<Apply userRole={userRole} />} />
+            <Route
+              path="/profile"
+              element={<ProtectedRoute element={<StudentProfile userRole={userRole} />} role={userRole} />}
+            />
+            <Route
+              path="/chatbot"
+              element={<ProtectedRoute element={<Chatbot userRole={userRole} />} role={userRole} requiredRole={["company", "admin"]} />}
+            />
+            <Route path="/Chatbot_test" element={<ProtectedRoute element={<Chatbot userRole={userRole} />} role={userRole} />} />
+          </Routes>
+        </Router>
+      </NotificationProvider>
     </AuthContext.Provider>
   );
 }

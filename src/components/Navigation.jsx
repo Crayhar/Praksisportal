@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useContext, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { NotificationContext } from '../contexts/NotificationContext';
 
 function NavIcon({ children }) {
   return (
@@ -12,13 +13,35 @@ function NavIcon({ children }) {
 export default function Navigation({ userRole, user, onLogout }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+
+  const notifCtx = useContext(NotificationContext);
+  const unreadCount = notifCtx?.unreadCount ?? 0;
+  const notifItems = notifCtx?.items ?? [];
+  const markRead = notifCtx?.markRead;
+  const markAllRead = notifCtx?.markAllRead;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [notifOpen]);
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
+    setNotifOpen(false);
   };
 
   const closeMenu = () => {
     setMenuOpen(false);
+    setNotifOpen(false);
   };
 
   const handleLogout = () => {
@@ -82,7 +105,7 @@ export default function Navigation({ userRole, user, onLogout }) {
 
   const aiItem = {
     to: userRole === 'company' ? '/chatbot' : '/Chatbot_test',
-    label: userRole === 'company' ? 'AI-annonse' : 'AI-verktøy',
+    label: userRole === 'company' ? 'AI-prosjekt' : 'AI-verktøy',
     icon: (
       <NavIcon>
         <svg viewBox="0 0 24 24" focusable="false">
@@ -157,6 +180,74 @@ export default function Navigation({ userRole, user, onLogout }) {
           </li>
           {user ? (
             <>
+              {userRole === 'student' && (
+                <li className="nav-item nav-notif-item" ref={notifRef}>
+                  <button
+                    className="nav-link nav-bell-btn"
+                    onClick={() => setNotifOpen((v) => !v)}
+                    aria-label={`Varslinger${unreadCount > 0 ? ` (${unreadCount} uleste)` : ''}`}
+                  >
+                    <NavIcon>
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2Zm6-6V11a6 6 0 0 0-5-5.92V4a1 1 0 0 0-2 0v1.08A6 6 0 0 0 6 11v5l-1.29 1.29A1 1 0 0 0 5 19h14a1 1 0 0 0 .71-1.71Z" />
+                      </svg>
+                    </NavIcon>
+                    {unreadCount > 0 && (
+                      <span className="nav-notif-badge" aria-hidden="true">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                    <span className="nav-tooltip">Varslinger</span>
+                    <span className="sr-only">Varslinger</span>
+                  </button>
+                  {notifOpen && (
+                    <div className="nav-notif-dropdown" role="dialog" aria-label="Varslinger">
+                      <div className="nav-notif-header">
+                        <span className="nav-notif-heading">Varslinger</span>
+                        {unreadCount > 0 && (
+                          <button
+                            className="nav-notif-mark-all"
+                            onClick={() => { markAllRead(); }}
+                          >
+                            Merk alle lest
+                          </button>
+                        )}
+                      </div>
+                      {notifItems.length === 0 ? (
+                        <p className="nav-notif-empty">Ingen varslinger ennå</p>
+                      ) : (
+                        <ul className="nav-notif-list">
+                          {notifItems.slice(0, 8).map((n) => (
+                            <li key={n.id} className={`nav-notif-entry${n.isRead ? ' read' : ' unread'}`}>
+                              <button
+                                className="nav-notif-entry-btn"
+                                onClick={() => {
+                                  if (!n.isRead) markRead(n.id);
+                                  setNotifOpen(false);
+                                  navigate('/internships');
+                                }}
+                              >
+                                {!n.isRead && <span className="nav-notif-dot" aria-hidden="true" />}
+                                <span className="nav-notif-info">
+                                  <span className="nav-notif-title">{n.caseTitle}</span>
+                                  <span className="nav-notif-meta">{n.companyName} · {n.matchScore}% match</span>
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <Link
+                        to="/profile"
+                        className="nav-notif-see-all"
+                        onClick={() => setNotifOpen(false)}
+                      >
+                        Se alle varslinger →
+                      </Link>
+                    </div>
+                  )}
+                </li>
+              )}
               <li className="nav-item nav-role-indicator">
                 <span className="nav-link">{roleLabel}</span>
               </li>
