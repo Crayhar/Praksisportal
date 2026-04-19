@@ -75,7 +75,7 @@ export const internships = [
     expectations:
       'Du ma kunne lese eksisterende kode, samarbeide med teamet og levere i sma inkrementer.',
     professionalQualifications: 'React, Node.js, SQL, API',
-    personalQualifications: 'Lærevilje, samarbeid, initiativ',
+    personalQualifications: 'Lærevilje, Samarbeid, Initiativ',
     startDate: '2026-08-20',
     endDate: '2026-12-20',
     startWithin: 'Senest innen 10 dager',

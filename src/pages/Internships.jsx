@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../App';
 import Footer from '../components/Footer';
 import InternshipDetailsModal from '../components/InternshipDetailsModal';
@@ -16,6 +17,7 @@ function mapPublishedCaseToInternship(item) {
 
   return {
     id: item.id,
+    companyId: item.companyId || item.company_id || null,
     title: item.generatedAdData?.title || item.title,
     company: item.companyName || item.logo || 'Bedrift',
     companyName: item.companyName || item.logo || 'Bedrift',
@@ -29,7 +31,10 @@ function mapPublishedCaseToInternship(item) {
     requiredQualifications: requiredQuals,
     preferredQualifications: preferredQuals,
     internshipCredits: true,
-    classification: item.classification,
+    classification:
+      typeof item.classification === 'string'
+        ? item.classification
+        : item.classification?.type || '',
     personalQualifications: Array.isArray(item.personalQualifications)
       ? item.personalQualifications.join(', ')
       : item.personalQualifications || '',
@@ -70,6 +75,8 @@ function mapInternshipToCaseLike(internship) {
     maxHours: internship.maxHours,
     location: internship.location,
     startWithin: internship.startWithin || '',
+    roleTrack: internship.roleTrack || '',
+    workMode: internship.workMode || '',
     technicalTerms: internship.skills.join(', '),
   };
 }
@@ -86,11 +93,11 @@ export default function Internships({ userRole }) {
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
-    location: '',
-    workMode: '',
-    classification: '',
-    roleTrack: '',
-    startWithin: '',
+    location: [],
+    workMode: [],
+    classification: [],
+    roleTrack: [],
+    startWithin: [],
   });
   const [studentProfile, setStudentProfile] = useState(defaultStudentProfile);
   const [publishedCases, setPublishedCases] = useState([]);
@@ -154,13 +161,66 @@ export default function Internships({ userRole }) {
     };
   }, [internshipFeed]);
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount = Object.values(filters).reduce((acc, value) => acc + value.length, 0);
 
-  const setFilter = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
-  const clearFilters = () => setFilters({ location: '', workMode: '', classification: '', roleTrack: '', startWithin: '' });
+  const toggleFilter = (key, value) => {
+    setFilters((prev) => {
+      const current = prev[key] || [];
+      const exists = current.includes(value);
+      return {
+        ...prev,
+        [key]: exists ? current.filter((item) => item !== value) : [...current, value],
+      };
+    });
+  };
+
+  const removeFilterValue = (key, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: (prev[key] || []).filter((item) => item !== value),
+    }));
+  };
+
+  const clearFilters = () =>
+    setFilters({
+      location: [],
+      workMode: [],
+      classification: [],
+      roleTrack: [],
+      startWithin: [],
+    });
 
   const filteredInternships = useMemo(() => {
     const query = searchQuery.toLowerCase();
+
+    const normalize = (value) =>
+      String(value || '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const canonicalLocation = (value) =>
+      normalize(value)
+        .split(/[,/;|]/)[0]
+        .replace(/\b(norge|norway)\b/g, '')
+        .trim();
+
+    const matchesLocation = (selectedValues, currentValue) => {
+      if (selectedValues.length === 0) return true;
+      const current = canonicalLocation(currentValue);
+      return selectedValues.some((selected) => canonicalLocation(selected) === current);
+    };
+
+    const matchesSelection = (selectedValues, currentValue, allowPartial = false) => {
+      if (selectedValues.length === 0) return true;
+      const current = normalize(currentValue);
+      return selectedValues.some((selected) => {
+        const target = normalize(selected);
+        if (!allowPartial) return current === target;
+        return current === target || current.includes(target) || target.includes(current);
+      });
+    };
+
     let filtered = internshipFeed.filter((internship) => {
       // Text search
       if (
@@ -170,11 +230,23 @@ export default function Internships({ userRole }) {
         !(internship.location || '').toLowerCase().includes(query)
       ) return false;
       // Filters
-      if (filters.location && internship.location !== filters.location) return false;
-      if (filters.workMode && internship.workMode !== filters.workMode) return false;
-      if (filters.classification && internship.classification !== filters.classification) return false;
-      if (filters.roleTrack && internship.roleTrack !== filters.roleTrack) return false;
-      if (filters.startWithin && internship.startWithin !== filters.startWithin) return false;
+      const locationValue = internship.location || '';
+      const workModeValue = internship.workMode || '';
+      const classificationValue = internship.classification || '';
+      const roleTrackValue = internship.roleTrack || '';
+      const startWithinValue = internship.startWithin || '';
+
+      const passLocation = matchesLocation(filters.location, locationValue);
+      const passWorkMode = matchesSelection(filters.workMode, workModeValue);
+      const passClassification = matchesSelection(filters.classification, classificationValue);
+      const passRoleTrack = matchesSelection(filters.roleTrack, roleTrackValue);
+      const passStartWithin = matchesSelection(filters.startWithin, startWithinValue, true);
+
+      if (!passLocation) return false;
+      if (!passWorkMode) return false;
+      if (!passClassification) return false;
+      if (!passRoleTrack) return false;
+      if (!passStartWithin) return false;
       return true;
     });
 
@@ -230,7 +302,7 @@ export default function Internships({ userRole }) {
     }
 
     return sorted;
-  }, [internshipFeed, searchQuery, sortBy, isStudent, studentProfile, publishedCases]);
+  }, [internshipFeed, searchQuery, sortBy, isStudent, studentProfile, publishedCases, filters]);
   const selectedFromUrl = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const selectedId = params.get('selected');
@@ -326,83 +398,89 @@ export default function Internships({ userRole }) {
               <div className="filter-panel">
                 <div className="filter-panel-grid">
                   {/* Location */}
-                  <label className="filter-label">
+                  <div className="filter-label">
                     <span>Sted</span>
-                    <select
-                      className="filter-select"
-                      value={filters.location}
-                      onChange={(e) => setFilter('location', e.target.value)}
-                    >
-                      <option value="">Alle steder</option>
+                    <div className="filter-multi-list">
                       {filterOptions.locations.map((loc) => (
-                        <option key={loc} value={loc}>{loc}</option>
+                        <label key={loc} className="filter-check">
+                          <input
+                            type="checkbox"
+                            checked={filters.location.includes(loc)}
+                            onChange={() => toggleFilter('location', loc)}
+                          />
+                          <span>{loc}</span>
+                        </label>
                       ))}
-                    </select>
-                  </label>
+                    </div>
+                  </div>
 
                   {/* Work mode */}
-                  <label className="filter-label">
+                  <div className="filter-label">
                     <span>Arbeidsform</span>
-                    <select
-                      className="filter-select"
-                      value={filters.workMode}
-                      onChange={(e) => setFilter('workMode', e.target.value)}
-                    >
-                      <option value="">Alle former</option>
+                    <div className="filter-multi-list">
                       {filterOptions.workModes.map((wm) => (
-                        <option key={wm} value={wm}>
-                          {wm === 'onsite' ? 'På stedet' : wm === 'hybrid' ? 'Hybrid' : wm === 'remote' ? 'Hjemmefra' : wm}
-                        </option>
+                        <label key={wm} className="filter-check">
+                          <input
+                            type="checkbox"
+                            checked={filters.workMode.includes(wm)}
+                            onChange={() => toggleFilter('workMode', wm)}
+                          />
+                          <span>{wm === 'onsite' ? 'På stedet' : wm === 'hybrid' ? 'Hybrid' : wm === 'remote' ? 'Hjemmefra' : wm}</span>
+                        </label>
                       ))}
-                    </select>
-                  </label>
+                    </div>
+                  </div>
 
                   {/* Classification */}
-                  <label className="filter-label">
+                  <div className="filter-label">
                     <span>Type praksis</span>
-                    <select
-                      className="filter-select"
-                      value={filters.classification}
-                      onChange={(e) => setFilter('classification', e.target.value)}
-                    >
-                      <option value="">Alle typer</option>
+                    <div className="filter-multi-list">
                       {filterOptions.classifications.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <label key={c} className="filter-check">
+                          <input
+                            type="checkbox"
+                            checked={filters.classification.includes(c)}
+                            onChange={() => toggleFilter('classification', c)}
+                          />
+                          <span>{c}</span>
+                        </label>
                       ))}
-                    </select>
-                  </label>
+                    </div>
+                  </div>
 
                   {/* Role track */}
-                  <label className="filter-label">
+                  <div className="filter-label">
                     <span>Fagretning</span>
-                    <select
-                      className="filter-select"
-                      value={filters.roleTrack}
-                      onChange={(e) => setFilter('roleTrack', e.target.value)}
-                    >
-                      <option value="">Alle retninger</option>
+                    <div className="filter-multi-list">
                       {filterOptions.roleTracks.map((rt) => (
-                        <option key={rt} value={rt}>
-                          {rt === 'frontend' ? 'Frontend' : rt === 'ux' ? 'UX / Design' : rt === 'data' ? 'Data / Analyse' : rt === 'fullstack' ? 'Full Stack' : rt === 'backend' ? 'Backend' : rt === 'unsure' ? 'Generell' : rt}
-                        </option>
+                        <label key={rt} className="filter-check">
+                          <input
+                            type="checkbox"
+                            checked={filters.roleTrack.includes(rt)}
+                            onChange={() => toggleFilter('roleTrack', rt)}
+                          />
+                          <span>{rt === 'frontend' ? 'Frontend' : rt === 'ux' ? 'UX / Design' : rt === 'data' ? 'Data / Analyse' : rt === 'fullstack' ? 'Full Stack' : rt === 'backend' ? 'Backend' : rt === 'unsure' ? 'Generell' : rt}</span>
+                        </label>
                       ))}
-                    </select>
-                  </label>
+                    </div>
+                  </div>
 
                   {/* Start within */}
-                  <label className="filter-label">
+                  <div className="filter-label">
                     <span>Oppstart innen</span>
-                    <select
-                      className="filter-select"
-                      value={filters.startWithin}
-                      onChange={(e) => setFilter('startWithin', e.target.value)}
-                    >
-                      <option value="">Alle perioder</option>
+                    <div className="filter-multi-list">
                       {filterOptions.startWithins.map((sw) => (
-                        <option key={sw} value={sw}>{sw}</option>
+                        <label key={sw} className="filter-check">
+                          <input
+                            type="checkbox"
+                            checked={filters.startWithin.includes(sw)}
+                            onChange={() => toggleFilter('startWithin', sw)}
+                          />
+                          <span>{sw}</span>
+                        </label>
                       ))}
-                    </select>
-                  </label>
+                    </div>
+                  </div>
                 </div>
 
                 {activeFilterCount > 0 && (
@@ -416,11 +494,21 @@ export default function Internships({ userRole }) {
             {/* Active filter chips */}
             {activeFilterCount > 0 && !filtersOpen && (
               <div className="filter-chips">
-                {filters.location && <span className="filter-chip">📍 {filters.location} <button onClick={() => setFilter('location', '')} aria-label="Fjern sted-filter">×</button></span>}
-                {filters.workMode && <span className="filter-chip">🏢 {filters.workMode === 'onsite' ? 'På stedet' : filters.workMode === 'hybrid' ? 'Hybrid' : 'Hjemmefra'} <button onClick={() => setFilter('workMode', '')} aria-label="Fjern arbeidsform-filter">×</button></span>}
-                {filters.classification && <span className="filter-chip">🎓 {filters.classification} <button onClick={() => setFilter('classification', '')} aria-label="Fjern type-filter">×</button></span>}
-                {filters.roleTrack && <span className="filter-chip">💻 {filters.roleTrack === 'frontend' ? 'Frontend' : filters.roleTrack === 'ux' ? 'UX / Design' : filters.roleTrack === 'data' ? 'Data / Analyse' : filters.roleTrack === 'fullstack' ? 'Full Stack' : filters.roleTrack === 'backend' ? 'Backend' : filters.roleTrack} <button onClick={() => setFilter('roleTrack', '')} aria-label="Fjern fagretning-filter">×</button></span>}
-                {filters.startWithin && <span className="filter-chip">📅 {filters.startWithin} <button onClick={() => setFilter('startWithin', '')} aria-label="Fjern periode-filter">×</button></span>}
+                {filters.location.map((value) => (
+                  <span key={`loc-${value}`} className="filter-chip">📍 {value} <button onClick={() => removeFilterValue('location', value)} aria-label="Fjern sted-filter">×</button></span>
+                ))}
+                {filters.workMode.map((value) => (
+                  <span key={`wm-${value}`} className="filter-chip">🏢 {value === 'onsite' ? 'På stedet' : value === 'hybrid' ? 'Hybrid' : 'Hjemmefra'} <button onClick={() => removeFilterValue('workMode', value)} aria-label="Fjern arbeidsform-filter">×</button></span>
+                ))}
+                {filters.classification.map((value) => (
+                  <span key={`cl-${value}`} className="filter-chip">🎓 {value} <button onClick={() => removeFilterValue('classification', value)} aria-label="Fjern type-filter">×</button></span>
+                ))}
+                {filters.roleTrack.map((value) => (
+                  <span key={`rt-${value}`} className="filter-chip">💻 {value === 'frontend' ? 'Frontend' : value === 'ux' ? 'UX / Design' : value === 'data' ? 'Data / Analyse' : value === 'fullstack' ? 'Full Stack' : value === 'backend' ? 'Backend' : value} <button onClick={() => removeFilterValue('roleTrack', value)} aria-label="Fjern fagretning-filter">×</button></span>
+                ))}
+                {filters.startWithin.map((value) => (
+                  <span key={`sw-${value}`} className="filter-chip">📅 {value} <button onClick={() => removeFilterValue('startWithin', value)} aria-label="Fjern periode-filter">×</button></span>
+                ))}
                 <button type="button" className="filter-chip filter-chip-clear" onClick={clearFilters}>Nullstill alle</button>
               </div>
             )}
@@ -475,7 +563,19 @@ export default function Internships({ userRole }) {
                         </div>
                       ) : null}
                       <h3>{internship.title}</h3>
-                      <p className="company">🏢 {internship.company}</p>
+                      <p className="company">
+                        🏢{' '}
+                        {internship.companyId ? (
+                          <Link
+                            className="company-profile-link"
+                            to={`/companies/${internship.companyId}`}
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            {internship.company}
+                          </Link>
+                        ) : internship.company}
+                      </p>
                       <p className="location">📍 {internship.location}</p>
                       <p>{internship.description}</p>
                       <p className="internship-meta">

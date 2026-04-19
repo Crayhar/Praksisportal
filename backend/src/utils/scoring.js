@@ -85,12 +85,12 @@ function parseList(input) {
 }
 
 function proficiencyWeight(level) {
-  if (level == null) return 0.75;
+  if (level == null) return 0.3;
   if (level <= 1) return 0.45;
   if (level <= 2) return 0.65;
   if (level <= 3) return 0.80;
   if (level <= 4) return 0.92;
-  return 1.0;
+  return 1.2;
 }
 
 function getSynonymGroup(normalizedTerm) {
@@ -226,9 +226,11 @@ export function computeMatchScore(caseInfo, studentInfo) {
   const personalReqs = parseList(caseInfo.personalQuals);
 
   const studentSkills = Array.isArray(studentInfo.skills) ? studentInfo.skills : [];
+  const fieldSubjects = studentInfo.field ? [studentInfo.field] : [];
   const subjectPool = [
     ...studentInfo.currentSubjects,
     ...studentInfo.completedSubjects,
+    ...fieldSubjects,
   ];
   const personalPool = [
     ...studentInfo.personalChars,
@@ -252,5 +254,41 @@ export function computeMatchScore(caseInfo, studentInfo) {
   const inferredSubjects = inferRelevantSubjects(caseInfo);
   const subjectScore = scoreSubjects(inferredSubjects, subjectPool);
 
-  return Math.round(professionalScore * 0.5 + personalScore * 0.25 + subjectScore * 0.25);
+  // Preference alignment: role track, work mode, location
+  let preferenceScore = 100;
+  let preferenceFactors = 0;
+  let preferenceTotal = 0;
+
+  const preferredRoleTracks = studentInfo.preferredRoleTracks || [];
+  if (preferredRoleTracks.length > 0 && caseInfo.roleTrack) {
+    preferenceFactors++;
+    preferenceTotal += preferredRoleTracks.includes(caseInfo.roleTrack) ? 100 : 0;
+  }
+
+  const preferredWorkModes = studentInfo.preferredWorkModes || [];
+  if (preferredWorkModes.length > 0 && caseInfo.workMode) {
+    preferenceFactors++;
+    preferenceTotal += preferredWorkModes.includes(caseInfo.workMode) ? 100 : 0;
+  }
+
+  const preferredLocations = studentInfo.preferredLocations || [];
+  if (preferredLocations.length > 0 && caseInfo.location) {
+    const normLoc = (v) => (v || '').toLowerCase().split(/[,/;|]/)[0].replace(/\b(norge|norway)\b/g, '').trim();
+    const caseLocNorm = normLoc(caseInfo.location);
+    const isRemote = caseLocNorm === 'remote';
+    preferenceFactors++;
+    preferenceTotal += (isRemote || preferredLocations.some((l) => normLoc(l) === caseLocNorm)) ? 100 : 0;
+  }
+
+  if (preferenceFactors > 0) {
+    preferenceScore = Math.round(preferenceTotal / preferenceFactors);
+  }
+
+  const hasPreferences = preferenceFactors > 0;
+  return Math.round(
+    professionalScore * (hasPreferences ? 0.45 : 0.50) +
+    personalScore * (hasPreferences ? 0.20 : 0.25) +
+    subjectScore * (hasPreferences ? 0.20 : 0.25) +
+    (hasPreferences ? preferenceScore * 0.15 : 0)
+  );
 }

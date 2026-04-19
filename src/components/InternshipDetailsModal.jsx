@@ -3,6 +3,15 @@ import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+function normalizeWebsiteUrl(url) {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 function buildFallbackFullAd(internship) {
   const requiredQualifications = internship.requiredQualifications || internship.skills || [];
   const preferredQualifications = internship.preferredQualifications || [];
@@ -110,7 +119,14 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
           </div>
         ) : null}
         <h2 id="internship-modal-title">{internship.title}</h2>
-        <p className="modal-company">🏢 {internship.company}</p>
+        <p className="modal-company">
+          🏢{' '}
+          {internship.companyId ? (
+            <Link to={`/companies/${internship.companyId}`} onClick={onClose}>
+              {internship.company}
+            </Link>
+          ) : internship.company}
+        </p>
         <p className="modal-location">📍 {internship.location}</p>
 
         <div className="modal-view-switch">
@@ -202,7 +218,14 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
           <aside className="modal-side">
             <div className="modal-panel">
               <h3>Om bedriften</h3>
-              <p><strong>Navn:</strong> {internship.companyName || internship.company}</p>
+              <p>
+                <strong>Navn:</strong>{' '}
+                {internship.companyId ? (
+                  <Link to={`/companies/${internship.companyId}`} onClick={onClose} className="company-profile-link">
+                    {internship.companyName || internship.company}
+                  </Link>
+                ) : (internship.companyName || internship.company)}
+              </p>
               <p>{companyInfoText}</p>
               {internship.industry ? (
                 <p><strong>Bransje:</strong> {internship.industry}</p>
@@ -213,7 +236,7 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
               {internship.website ? (
                 <p>
                   <strong>Nettside:</strong>{' '}
-                  <a href={internship.website} target="_blank" rel="noreferrer">
+                  <a href={normalizeWebsiteUrl(internship.website)} target="_blank" rel="noreferrer">
                     {internship.website}
                   </a>
                 </p>

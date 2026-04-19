@@ -22,7 +22,7 @@ export default function Login() {
       token.set(data.token);
       setUser(data.user);
       setUserRole(data.user.role);
-      navigate(data.user.role === "student" ? "/profile" : "/chatbot");
+      navigate(data.user.role === "student" ? "/profile" : "/");
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {

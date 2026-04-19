@@ -6,6 +6,7 @@ import Internships from './pages/Internships';
 import Apply from './pages/Apply';
 import Chatbot from './pages/Chatbot';
 import StudentProfile from './pages/StudentProfile';
+import CompanyProfilePublic from './pages/CompanyProfilePublic';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { auth, token as tokenUtils } from './utils/api';
@@ -76,6 +77,7 @@ function App() {
               path="/profile"
               element={<ProtectedRoute element={<StudentProfile userRole={userRole} />} role={userRole} />}
             />
+            <Route path="/companies/:companyId" element={<CompanyProfilePublic />} />
             <Route
               path="/chatbot"
               element={<ProtectedRoute element={<Chatbot userRole={userRole} />} role={userRole} requiredRole={["company", "admin"]} />}

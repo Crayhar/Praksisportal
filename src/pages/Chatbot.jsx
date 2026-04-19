@@ -33,7 +33,7 @@ const ROLE_OPTIONS = {
 const PROFILE_OPTIONS = {
   balanced: {
     label: 'Balansert profil',
-    personal: 'Samarbeid, initiativ, lærevilje',
+    personal: 'Samarbeid, Initiativ, Lærevilje',
   },
   structured: {
     label: 'Strukturert og nøye',
@@ -83,6 +83,102 @@ const OFFERING_OPTIONS = {
   certification: 'Sertifisering gjennom jobben',
   reference: 'Attest / referanse',
 };
+
+const EXAMPLE_DATA = {
+  frontend: {
+    title: 'Frontend-praksis for analyseplattform',
+    taskDescription: 'Studenten skal utvikle interaktive dashbord-komponenter i React, integrere REST API og sørge for god ytelse og tilgjengelighet på tvers av enheter.',
+    companyQualifications: 'Vi er et tech-selskap med 15 ansatte som bygger dataanalyseløsninger for norske kommuner. Teamet jobber agilt med utviklere, designere og dataanalytikere.',
+    requiredQualifications: 'React, JavaScript, HTML, CSS',
+    preferredQualifications: 'TypeScript, REST API, Git, Figma',
+    roleTracks: ['frontend'],
+    candidateProfile: 'balanced',
+    collaborationStyle: 'team',
+    scopePreset: 'medium',
+    workMode: 'hybrid',
+    location: 'Oslo',
+    offerings: ['reference', 'workplace'],
+  },
+  ux: {
+    title: 'UX/UI-design for mobilapp',
+    taskDescription: 'Studenten skal kartlegge brukerreiser, lage wireframes og prototyper i Figma, og gjennomføre brukertester med målgruppen for å validere designvalg.',
+    companyQualifications: 'Vi er en startup med 8 ansatte som utvikler en helseapp for unge voksne. Vi trenger en designer som bidrar med brukersentrert design og sterk estetisk sans.',
+    requiredQualifications: 'Figma, Prototyping, Brukertestring',
+    preferredQualifications: 'Adobe XD, Illustrator, Animasjon, Tilgjengelighet',
+    roleTracks: ['ux'],
+    candidateProfile: 'creative',
+    collaborationStyle: 'team',
+    scopePreset: 'medium',
+    workMode: 'hybrid',
+    location: 'Bergen',
+    offerings: ['reference', 'certification'],
+  },
+  data: {
+    title: 'Dataanalyse og visualisering av salgsdata',
+    taskDescription: 'Studenten skal analysere salgsdata fra siste tre år, bygge visualiseringer i Python og presentere innsikt og anbefalinger for ledelsen.',
+    companyQualifications: 'Vi er en e-handelsplattform med 30 ansatte. Vi ønsker hjelp til å forstå kundedata bedre og optimalisere salgsstrategier basert på datagrunnlag.',
+    requiredQualifications: 'Python, SQL, Pandas, Matplotlib',
+    preferredQualifications: 'Tableau, Power BI, Machine Learning, scikit-learn',
+    roleTracks: ['data'],
+    candidateProfile: 'structured',
+    collaborationStyle: 'independent',
+    scopePreset: 'medium',
+    workMode: 'remote',
+    location: 'Remote',
+    offerings: ['reference'],
+  },
+  fullstack: {
+    title: 'Fullstack-utvikling av intern administrasjonsportal',
+    taskDescription: 'Studenten skal utvikle en intern portal med React frontend og Node.js backend, sette opp database og API, og dokumentere løsningen for videre drift.',
+    companyQualifications: 'Vi er et konsulentselskap med 50 ansatte som trenger bedre interne verktøy for å effektivisere arbeidsflyt og prosjektoppfølging.',
+    requiredQualifications: 'React, Node.js, SQL, REST API',
+    preferredQualifications: 'TypeScript, Docker, Git, CI/CD',
+    roleTracks: ['fullstack'],
+    candidateProfile: 'balanced',
+    collaborationStyle: 'team',
+    scopePreset: 'extended',
+    workMode: 'hybrid',
+    location: 'Trondheim',
+    offerings: ['reference', 'workplace'],
+  },
+  backend: {
+    title: 'Backend-utvikling og API-design',
+    taskDescription: 'Studenten skal designe og implementere RESTful APIer, optimalisere databasespørringer og bidra til automatisert testing og CI/CD pipeline.',
+    companyQualifications: 'Vi er et fintech-selskap med 20 ansatte som bygger betalingsløsninger. Vi trenger hjelp til å skalere vår backend og forbedre API-dokumentasjonen.',
+    requiredQualifications: 'Node.js, SQL, REST API, Git',
+    preferredQualifications: 'Docker, AWS, TypeScript, Kubernetes',
+    roleTracks: ['backend'],
+    candidateProfile: 'structured',
+    collaborationStyle: 'independent',
+    scopePreset: 'medium',
+    workMode: 'onsite',
+    location: 'Stavanger',
+    offerings: ['reference', 'certification'],
+  },
+  default: {
+    title: 'Praksisstudent med fokus på digitale løsninger',
+    taskDescription: 'Studenten skal bidra med utvikling, analyse eller design i et tverrfaglig team. Oppdraget tilpasses studentens profil og bedriftens aktuelle behov.',
+    companyQualifications: 'Vi er en mellomstor bedrift med 25 ansatte innen teknologi og digitale tjenester. Vi ønsker en student som bidrar med nye perspektiver og friske øyne.',
+    requiredQualifications: 'Relevant fagbakgrunn, Læringsvilje, Initiativ',
+    preferredQualifications: 'Prosjekterfaring, Teamarbeid, Kommunikasjon',
+    roleTracks: ['unsure'],
+    candidateProfile: 'balanced',
+    collaborationStyle: 'team',
+    scopePreset: 'medium',
+    workMode: 'hybrid',
+    location: 'Oslo',
+    offerings: ['reference'],
+  },
+};
+
+const EXAMPLE_ROLES = [
+  { key: 'frontend', label: 'Frontendutvikler' },
+  { key: 'ux', label: 'UX/UI Designer' },
+  { key: 'data', label: 'Dataanalytiker' },
+  { key: 'fullstack', label: 'Fullstackutvikler' },
+  { key: 'backend', label: 'Backendutvikler' },
+  { key: 'default', label: 'Standard eksempel' },
+];
 
 function prepareCaseForm(form, companyProfile) {
   const getStringValue = (val) => {
@@ -140,6 +236,108 @@ function formatDate(dateString) {
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(dateString));
+}
+
+function buildContextSection(form, classification, requirementAnalysis, companyProfile, mode) {
+  const websiteGuidance = form.website
+    ? `Bedriften har oppgitt nettsiden ${form.website}. Bruk den som viktig selskapskontekst.`
+    : 'Bedriften har ikke oppgitt nettside. Hvis selskapsnavn og beskrivelse ikke er nok til å skrive et presis prosjekt, skal du be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.';
+  const revisionSection =
+    mode === 'revision'
+      ? `
+Eksisterende utkast:
+${form.generatedAd}
+
+Du skal revidere utkastet over basert pa denne endringsbestillingen:
+${form.revisionInstruction || 'Forbedre klarhet og presisjon uten a endre fakta.'}
+`
+      : '';
+
+  return `
+Du er en norsk AI-assistent som hjelper en bedrift med å skrive et praksis- eller studentprosjekt.
+
+Hvis bedriften velger Usikker/annet på Hovedfokus, bruk informasjonen i de andre feltene for å finne det beste fokuset og klassifisere saken.
+
+Bedrift:
+- Navn: ${companyProfile?.name || form.logo || 'Ikke oppgitt'}
+- Logo: ${form.logo || 'Ikke oppgitt'}
+- Nettside: ${form.website || 'Ikke oppgitt'}
+- Hva bedriften gjør: ${form.companyQualifications}
+
+Oppdrag:
+- Tittel/hovedfokus: ${form.title || form.taskFocus}
+- Spesifikk oppdragskontekst: ${form.assignmentContext}
+- Tekniske begreper: ${form.technicalTerms}
+- Oppgavebeskrivelse: ${form.taskDescription}
+- Leveranser: ${form.deliveries}
+- Forventninger: ${form.expectations}
+- Krav (MÅ ha): ${form.requiredQualifications}
+- Ønskelig (FINT å ha): ${form.preferredQualifications || 'Ikke spesifisert'}
+- Personlige kvalifikasjoner: ${form.personalQualifications}
+- Lokasjon: ${form.location}
+- Startdato: ${formatDate(form.startDate)}
+- Sluttdato: ${formatDate(form.endDate)}
+- Start senest innen: ${form.startWithin}
+- Omfang: ${form.maxHours} timer
+- Sakstype vurdert av systemet: ${classification.type}
+- Relevante fag: ${classification.relevantSubjects.join(', ')}
+- Viktigste kvalifikasjon i kravbildet: ${requirementAnalysis.mostImportantQualification}
+- Kvalitetsdekning for forventninger: ${requirementAnalysis.expectationCoverage}%
+- Revisjonsinstruksjon: ${form.revisionInstruction || 'Ingen'}
+- Ekstra veiledning: ${websiteGuidance}
+
+${revisionSection}`.trim();
+}
+
+function buildMetadataPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
+  return `
+${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode)}
+
+Svar kun med gyldig JSON. Vær kort og presis — maksimalt 2-4 ord per listepunkt, maks 2 setninger i tekstfelt. Ikke finn opp fakta hvis informasjon mangler.
+
+{
+  "title": "string",
+  "summary": "string",
+  "companySummary": "string",
+  "assignmentContext": "string",
+  "tasks": ["string"],
+  "deliveries": ["string"],
+  "expectations": ["string"],
+  "qualificationsProfessional": ["string"],
+  "qualificationsPersonal": ["string"],
+  "targetAudience": "string",
+  "recommendedSubjects": ["string"],
+  "practicalInfo": {
+    "location": "string",
+    "startDate": "string",
+    "endDate": "string",
+    "startWithin": "string",
+    "maxHours": "string"
+  },
+  "closingText": "string"
+}
+`.trim();
+}
+
+function buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadata, mode = 'initial') {
+  return `
+${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode)}
+
+Skriv et kortfattet studentprosjekt på norsk. Vær konsis — maks 2-3 setninger per del, korte kulepunkter. Ikke finn opp fakta hvis informasjon mangler.
+
+Del inn i disse delene:
+1. Tittel: ${metadata?.title || form.title || form.taskFocus}
+2. Kort om bedriften
+3. Oppdragskontekst
+4. Arbeidsoppgaver
+5. Leveranser og forventninger
+6. Faglige og personlige kvalifikasjoner
+7. Hvem oppdraget passer for (${classification.type})
+8. Praktisk informasjon
+9. Kort avslutning
+
+Skriv kun ren Markdown-tekst, ingen JSON. Hvis nettside mangler og bedriftsinformasjonen er for tynn, be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.
+`.trim();
 }
 
 function buildPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
@@ -326,12 +524,29 @@ function extractJsonBlock(value) {
   }
 
   const firstBrace = value.indexOf('{');
-  const lastBrace = value.lastIndexOf('}');
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+  if (firstBrace === -1) {
     return null;
   }
 
-  return value.slice(firstBrace, lastBrace + 1);
+  // Count braces to find the exact closing brace of the top-level object,
+  // ignoring braces inside strings or after the JSON ends.
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = firstBrace; i < value.length; i++) {
+    const ch = value[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return value.slice(firstBrace, i + 1);
+    }
+  }
+
+  return null;
 }
 
 function normalizeGeneratedAdPayload(rawResponse, form, classification, requirementAnalysis) {
@@ -431,32 +646,87 @@ function validateForm(form) {
   return nextErrors;
 }
 
-async function generateAdWithAi(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
+async function generateAdWithAi(form, classification, requirementAnalysis, companyProfile, mode = 'initial', onMetadataReady, onMarkdownChunk) {
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const openAiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  const provider = openAiApiKey ? 'openai' : geminiApiKey ? 'google' : null;
+  const ollamaHost = import.meta.env.VITE_OLLAMA_HOST || 'http://localhost:11434';
+  const aiProvider = import.meta.env.VITE_AI_PROVIDER || 'gemini';
 
-  if (!provider) {
-    const markdown = buildFallbackAd(form, classification, requirementAnalysis);
-    return {
-      markdown,
-      structured: buildStructuredFallback(form, classification, requirementAnalysis, markdown),
-    };
+  const createLLM = () => aiProvider === 'ollama'
+    ? new LLM({ service: 'ollama', model: 'gemma3-fast', baseUrl: ollamaHost })
+    : new LLM({ service: 'google', apiKey: geminiApiKey, model: 'gemini-2.5-pro' });
+
+  const systemPrompt = 'Du skriver profesjonelle norske student- og praksisprosjekter basert på strukturerte data.';
+
+  // For revisions, keep the single-call path since context continuity matters
+  if (mode === 'revision') {
+    const llm = createLLM();
+    llm.system(systemPrompt);
+    const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, companyProfile, mode), {
+      max_tokens: 2048,
+    });
+    return normalizeGeneratedAdPayload(response, form, classification, requirementAnalysis);
   }
 
-  const llm = new LLM(
-    provider === 'openai'
-      ? { service: 'openai', apiKey: openAiApiKey, model: 'gpt-4.1-mini' }
-      : { service: 'google', apiKey: geminiApiKey, model: 'gemini-2.5-flash' }
+  // Call 1: Metadata JSON (non-streaming — needs complete JSON to parse)
+  const llm1 = createLLM();
+  llm1.system(systemPrompt);
+  const metadataResponse = await llm1.chat(
+    buildMetadataPrompt(form, classification, requirementAnalysis, companyProfile, mode),
+    { max_tokens: 500 }
   );
 
-  llm.system('Du skriver profesjonelle norske student- og praksisprosjekter basert på strukturerte data.');
+  const metadataResult = normalizeGeneratedAdPayload(metadataResponse, form, classification, requirementAnalysis);
 
-  const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, companyProfile, mode), {
-    max_tokens: 4096,
-  });
+  if (onMetadataReady) {
+    onMetadataReady(metadataResult);
+  }
 
-  return normalizeGeneratedAdPayload(response, form, classification, requirementAnalysis);
+  // Call 2: Markdown document (streaming directly via Ollama fetch API)
+  let finalMarkdown = '';
+  if (aiProvider === 'ollama') {
+    const prompt = `${systemPrompt}\n\n${buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadataResult.structured, mode)}`;
+    const res = await fetch(`${ollamaHost}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gemma3-fast', prompt, stream: true, options: { num_predict: 900 } }),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const line of decoder.decode(value).split('\n')) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.response) {
+            finalMarkdown += parsed.response;
+            if (onMarkdownChunk) onMarkdownChunk(finalMarkdown);
+          }
+        } catch {
+          // skip malformed lines
+        }
+      }
+    }
+  } else {
+    const llm2 = createLLM();
+    llm2.system(systemPrompt);
+    const markdownResponse = await llm2.chat(
+      buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadataResult.structured, mode),
+      { max_tokens: 700 }
+    );
+    finalMarkdown = typeof markdownResponse === 'string'
+      ? markdownResponse.trim()
+      : (markdownResponse?.content || '').trim();
+  }
+
+  finalMarkdown = finalMarkdown.trim() || metadataResult.markdown;
+
+  return {
+    markdown: finalMarkdown,
+    structured: { ...metadataResult.structured, markdown: finalMarkdown },
+  };
 }
 
 export default function Chatbot({ userRole }) {
@@ -475,6 +745,11 @@ export default function Chatbot({ userRole }) {
   const [statusMessage, setStatusMessage] = useState('');
   const [initializing, setInitializing] = useState(true);
   const [fullProjectPreview, setFullProjectPreview] = useState(null);
+  const [showExamplePicker, setShowExamplePicker] = useState(false);
+  const [showHelpComposer, setShowHelpComposer] = useState(false);
+  const [helpMessage, setHelpMessage] = useState('');
+  const [sendingHelp, setSendingHelp] = useState(false);
+  const [isEditingGeneratedAd, setIsEditingGeneratedAd] = useState(false);
   const hasGeneratedDraft = Boolean(form.generatedAd);
 
   // Load data from API on mount
@@ -776,6 +1051,59 @@ export default function Chatbot({ userRole }) {
     setStatusMessage(`Revisjonsforslag valgt: ${suggestion}. Send endringen til AI når dere er klare.`);
   };
 
+  const handleManualGeneratedAdChange = (value) => {
+    setForm((prev) => {
+      const nextGeneratedAdData = prev.generatedAdData
+        ? { ...prev.generatedAdData, markdown: value }
+        : value.trim()
+          ? buildStructuredFallback(preparedForm, classification, requirementAnalysis, value)
+          : prev.generatedAdData;
+
+      return {
+        ...prev,
+        generatedAd: value,
+        generatedAdData: nextGeneratedAdData,
+        lastEditedAt: new Date().toISOString(),
+      };
+    });
+  };
+
+  const handleFillExample = (roleKey) => {
+    const example = EXAMPLE_DATA[roleKey];
+    if (!example) return;
+    setForm((prev) => ({
+      ...prev,
+      ...example,
+      roleTrack: example.roleTracks[0],
+      lastEditedAt: new Date().toISOString(),
+    }));
+    setErrors({});
+    setShowExamplePicker(false);
+    const roleLabel = EXAMPLE_ROLES.find((r) => r.key === roleKey)?.label || roleKey;
+    setStatusMessage(`Eksempeldata for ${roleLabel} er lagt inn. Juster feltene etter behov.`);
+  };
+
+  const handleSendHelpRequest = async () => {
+    const message = helpMessage.trim();
+    if (!message) {
+      setStatusMessage('Skriv en kort melding om hva dere trenger hjelp med.');
+      return;
+    }
+
+    try {
+      setSendingHelp(true);
+      await casesAPI.contactSupport(message);
+      setHelpMessage('');
+      setShowHelpComposer(false);
+      setStatusMessage('Hjelpeforesporsel er sendt. Vi kontakter dere pa e-post.');
+    } catch (err) {
+      console.error('Failed to send support request:', err);
+      setStatusMessage('Kunne ikke sende henvendelsen akkurat na. Proev igjen om litt.');
+    } finally {
+      setSendingHelp(false);
+    }
+  };
+
   const persistGeneratedDraft = (generatedAd, generatedAdData, nextStatusMessage) => {
     const nextDraft = {
       ...form,
@@ -804,10 +1132,26 @@ export default function Chatbot({ userRole }) {
     }
 
     setLoading(true);
-    setStatusMessage('Systemet genererer prosjektutkast og vurderer match mot studentprofilen.');
+    setStatusMessage('Trinn 1 av 2: Analyserer oppdraget og henter nøkkeldata...');
 
     try {
-      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, companyProfile, 'initial');
+      const result = await generateAdWithAi(
+        preparedForm,
+        classification,
+        requirementAnalysis,
+        companyProfile,
+        'initial',
+        (metadataResult) => {
+          setStatusMessage('Trinn 2 av 2: Skriver fullstendig prosjektbeskrivelse...');
+          setForm((prev) => ({
+            ...prev,
+            generatedAdData: metadataResult.structured,
+          }));
+        },
+        (accumulatedMarkdown) => {
+          setForm((prev) => ({ ...prev, generatedAd: accumulatedMarkdown }));
+        }
+      );
       persistGeneratedDraft(
         result.markdown,
         result.structured,
@@ -984,11 +1328,10 @@ export default function Chatbot({ userRole }) {
           Bedriftsregistrering og AI-støtte
         </p>
         <h1 className="case-intro-title">
-          Opprett en studentsak med huskede utkast, kvalifikasjonsscore og publisering
+          Opprett og publiser et studentprosjekt
         </h1>
         <p className="case-intro-copy">
-          Bedriften registrerer kontekst, tekniske begreper, leveranser, forventninger og krav. Systemet vurderer
-          sakstype, finner relevante fag og rangerer hvilke kvalifikasjoner som er viktigst i prosjektet.
+          Beskriv oppdraget, generer et AI-utkast og publiser saken for studenter.
         </p>
       </section>
 
@@ -1134,11 +1477,73 @@ export default function Chatbot({ userRole }) {
                   Fyll inn en kort brief. Resten blir strukturert automatisk for AI-utkastet.
                 </p>
               </div>
+              <div className="case-form-header-actions">
+                <div className="example-picker-wrapper">
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => {
+                      setShowExamplePicker((v) => !v);
+                      setShowHelpComposer(false);
+                    }}
+                  >
+                    Eksempel
+                  </button>
+                  {showExamplePicker && (
+                    <div className="example-picker">
+                      <p className="example-picker-title">Velg rolle for eksempel</p>
+                      {EXAMPLE_ROLES.map(({ key, label }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className="example-picker-option"
+                          onClick={() => handleFillExample(key)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="example-picker-wrapper">
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => {
+                      setShowHelpComposer((v) => !v);
+                      setShowExamplePicker(false);
+                    }}
+                    disabled={sendingHelp}
+                  >
+                    Kontakt oss
+                  </button>
+                  {showHelpComposer && (
+                    <div className="example-picker help-composer">
+                      <p className="example-picker-title">Trenger du hjelp med publisering?</p>
+                      <textarea
+                        className="case-textarea help-composer-textarea"
+                        value={helpMessage}
+                        onChange={(event) => setHelpMessage(event.target.value)}
+                        placeholder="Skriv kort hva du trenger hjelp med..."
+                      />
+                      <button
+                        type="button"
+                        className="example-picker-option help-composer-send"
+                        onClick={handleSendHelpRequest}
+                        disabled={sendingHelp}
+                      >
+                        {sendingHelp ? 'Sender...' : 'Send henvendelse'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="case-grid">
               <label>
-                Tittel *
+                <span className="field-label">Tittel *</span>
                 <input
                   className={`case-input ${errors.title ? 'case-input-error' : ''}`}
                   value={form.title}
@@ -1150,7 +1555,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <div>
-                <span>Nettside fra bedriftsprofil</span>
+                <span className="field-label">Nettside fra bedriftsprofil</span>
                 <input
                   className="case-input"
                   value={preparedForm.website || 'Ingen nettside lagt inn i bedriftsprofilen ennå'}
@@ -1164,7 +1569,7 @@ export default function Chatbot({ userRole }) {
               </div>
 
               <label className="full">
-                Rolle / hovedspor
+                <span className="field-label">Rolle / hovedspor</span>
                 <div className="case-radio-group">
                   {Object.entries(ROLE_OPTIONS).map(([value, label]) => (
                     <label
@@ -1186,7 +1591,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Kort oppdragsbrief *
+                <span className="field-label">Kort oppdragsbrief *</span>
                 <textarea
                   className={`case-textarea ${errors.taskDescription ? 'case-input-error' : ''}`}
                   value={form.taskDescription}
@@ -1198,7 +1603,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Bedriftsbeskrivelse *
+                <span className="field-label">Bedriftsbeskrivelse *</span>
                 <textarea
                   className={`case-textarea ${errors.companyQualifications ? 'case-input-error' : ''}`}
                   value={form.companyQualifications}
@@ -1210,7 +1615,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Krav – MÅ ha *
+                <span className="field-label">Krav – MÅ ha *</span>
                 <textarea
                   className={`case-textarea ${errors.requiredQualifications ? 'case-input-error' : ''}`}
                   value={Array.isArray(form.requiredQualifications) ? form.requiredQualifications.join(', ') : (form.requiredQualifications || '')}
@@ -1222,7 +1627,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Ønskelig – FINT å ha
+                <span className="field-label">Ønskelig – FINT å ha</span>
                 <textarea
                   className="case-textarea"
                   value={Array.isArray(form.preferredQualifications) ? form.preferredQualifications.join(', ') : (form.preferredQualifications || '')}
@@ -1232,7 +1637,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <div className="full">
-                <span>Hva kan vi tilby studenten?</span>
+                <span className="field-label">Hva kan vi tilby studenten?</span>
                 <div className="case-radio-group compact" style={{ marginTop: '0.5rem' }}>
                   {Object.entries(OFFERING_OPTIONS).map(([value, label]) => (
                     <label
@@ -1268,7 +1673,7 @@ export default function Chatbot({ userRole }) {
               </div>
 
               <label className="full">
-                Kandidatprofil
+                <span className="field-label">Kandidatprofil</span>
                 <div className="case-radio-group compact">
                   {Object.entries(PROFILE_OPTIONS).map(([value, option]) => (
                     <label key={value} className={`case-radio-card ${form.candidateProfile === value ? 'selected' : ''}`}>
@@ -1285,7 +1690,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Samarbeidsnivå
+                <span className="field-label">Samarbeidsnivå</span>
                 <div className="case-radio-group compact">
                   {Object.entries(COLLABORATION_OPTIONS).map(([value, label]) => (
                     <label key={value} className={`case-radio-card ${form.collaborationStyle === value ? 'selected' : ''}`}>
@@ -1304,7 +1709,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label className="full">
-                Omfang
+                <span className="field-label">Omfang</span>
                 <div className="case-radio-group compact">
                   {Object.entries(SCOPE_OPTIONS).map(([value, option]) => (
                     <label key={value} className={`case-radio-card ${form.scopePreset === value ? 'selected' : ''}`}>
@@ -1321,7 +1726,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label>
-                Arbeidsform
+                <span className="field-label">Arbeidsform</span>
                 <div className="case-radio-group compact">
                   {Object.entries(WORK_MODE_OPTIONS).map(([value, label]) => (
                     <label key={value} className={`case-radio-card ${form.workMode === value ? 'selected' : ''}`}>
@@ -1338,7 +1743,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label>
-                Lokasjon *
+                <span className="field-label">Lokasjon *</span>
                 <input
                   className={`case-input ${errors.location ? 'case-input-error' : ''}`}
                   value={form.location}
@@ -1350,7 +1755,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label>
-                Startdato *
+                <span className="field-label">Startdato *</span>
                 <input
                   className={`case-input ${errors.startDate ? 'case-input-error' : ''}`}
                   type="date"
@@ -1362,7 +1767,7 @@ export default function Chatbot({ userRole }) {
               </label>
 
               <label>
-                Sluttdato *
+                <span className="field-label">Sluttdato *</span>
                 <input
                   className={`case-input ${errors.endDate ? 'case-input-error' : ''}`}
                   type="date"
@@ -1420,7 +1825,7 @@ export default function Chatbot({ userRole }) {
             <div className="case-section-top-lg">
               <h3>Utkast</h3>
               <label className="case-revision-field">
-                Revisjonsinstruksjon
+                <span className="field-label">Revisjonsinstruksjon</span>
                 <input
                   className="case-input"
                   value={form.revisionInstruction}
@@ -1429,6 +1834,13 @@ export default function Chatbot({ userRole }) {
                 />
               </label>
               <div className="action-row">
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => setIsEditingGeneratedAd((prev) => !prev)}
+                >
+                  {isEditingGeneratedAd ? 'Ferdig med redigering' : 'Rediger teksten direkte'}
+                </button>
                 {hasGeneratedDraft ? (
                   <button type="button" className="secondary-action" onClick={handleReviseDraft} disabled={loading}>
                     Send endringer til AI
@@ -1436,11 +1848,28 @@ export default function Chatbot({ userRole }) {
                 ) : null}
               </div>
               <div className="case-output">
-                {form.generatedAd ? (
+                {isEditingGeneratedAd ? (
+                  <div className="case-output-editor-wrap">
+                    <textarea
+                      className="case-textarea case-output-editor"
+                      value={form.generatedAd || ''}
+                      onChange={(event) => handleManualGeneratedAdChange(event.target.value)}
+                      placeholder="Skriv eller rediger prosjektteksten her."
+                    />
+                    <div className="case-output-live-preview">
+                      <p className="muted"><strong>Forhåndsvisning</strong></p>
+                      {form.generatedAd ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.generatedAd}</ReactMarkdown>
+                      ) : (
+                        <p className="muted">Ingen tekst ennå.</p>
+                      )}
+                    </div>
+                  </div>
+                ) : form.generatedAd ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{form.generatedAd}</ReactMarkdown>
                 ) : (
                   <p className="muted">
-                    Generer utkast for a se prosjekttekst, sakstype, scoringsgrunnlag og revisjonsmuligheter.
+                    Ingen tekst ennå. Trykk "Rediger teksten direkte" for å skrive manuelt, eller generer utkast med AI.
                   </p>
                 )}
               </div>

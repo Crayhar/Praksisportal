@@ -16,6 +16,7 @@ function mapPublishedCaseToInternship(item) {
 
   return {
     id: item.id,
+    companyId: item.companyId || item.company_id || null,
     title: item.title,
     company: item.companyName || item.logo || 'Bedrift',
     companyName: item.companyName || item.logo || 'Bedrift',
@@ -183,33 +184,39 @@ export default function Home({ userRole, setUserRole }) {
         <div className="container">
           <h2>Hvorfor velge vår portal?</h2>
           <div className="feature-grid">
-            <div className="feature-card">
-              <div className="feature-icon">🎯</div>
-              <h3>{isCompany ? 'Finn kandidater' : 'Finn muligheter'}</h3>
-              <p>
-                {isCompany
-                  ? 'Beskriv behovet ditt og nå ut til studenter med riktig kompetanse.'
-                  : 'Se gjennom hundrevis av praksisplasser fra ledende bedrifter.'}
-              </p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">📋</div>
-              <h3>{isCompany ? 'Enkel publisering' : 'Enkel søknad'}</h3>
-              <p>
-                {isCompany
-                  ? 'Opprett og publiser stillingsprosjekter raskt, med eller uten AI.'
-                  : 'Søk på stillinger med noen få klikk og følg søknadene dine.'}
-              </p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">👥</div>
-              <h3>{isCompany ? 'Bygg talentpipeline' : 'Nettverk'}</h3>
-              <p>
-                {isCompany
-                  ? 'Få oversikt over praksisforløp og bygg relasjoner med fremtidige ansatte.'
-                  : 'Knytt kontakt med mentorer og fagpersoner innen ditt interessefelt.'}
-              </p>
-            </div>
+            <Link to={isCompany ? '/internships' : '/internships'} className="feature-card-link">
+              <div className="feature-card">
+                <div className="feature-icon">🎯</div>
+                <h3>{isCompany ? 'Finn kandidater' : 'Finn muligheter'}</h3>
+                <p>
+                  {isCompany
+                    ? 'Beskriv behovet ditt og nå ut til studenter med riktig kompetanse.'
+                    : 'Se gjennom hundrevis av praksisplasser fra ledende bedrifter.'}
+                </p>
+              </div>
+            </Link>
+            <Link to={isCompany ? '/Chatbot_test' : '/apply'} className="feature-card-link">
+              <div className="feature-card">
+                <div className="feature-icon">📋</div>
+                <h3>{isCompany ? 'Enkel publisering' : 'Enkel søknad'}</h3>
+                <p>
+                  {isCompany
+                    ? 'Opprett og publiser stillingsprosjekter raskt, med eller uten AI.'
+                    : 'Søk på stillinger med noen få klikk og følg søknadene dine.'}
+                </p>
+              </div>
+            </Link>
+            <Link to={isCompany ? '/profile' : '/profile'} className="feature-card-link">
+              <div className="feature-card">
+                <div className="feature-icon">👥</div>
+                <h3>{isCompany ? 'Bygg talentpipeline' : 'Nettverk'}</h3>
+                <p>
+                  {isCompany
+                    ? 'Få oversikt over praksisforløp og bygg relasjoner med fremtidige ansatte.'
+                    : 'Knytt kontakt med mentorer og fagpersoner innen ditt interessefelt.'}
+                </p>
+              </div>
+            </Link>
           </div>
         </div>
       </section>
@@ -271,7 +278,19 @@ export default function Home({ userRole, setUserRole }) {
                     </div>
                   ) : null}
                   <h3>{internship.title}</h3>
-                  <p className="company">🏢 {internship.company}</p>
+                  <p className="company">
+                    🏢{' '}
+                    {internship.companyId ? (
+                      <Link
+                        className="company-profile-link"
+                        to={`/companies/${internship.companyId}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        {internship.company}
+                      </Link>
+                    ) : internship.company}
+                  </p>
                   <p className="location">📍 {internship.location}</p>
                   <p>{internship.description}</p>
                   <p className="internship-meta">

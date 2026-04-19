@@ -7,6 +7,23 @@ import nodemailer from "nodemailer";
 
 let transporter = null;
 
+function isGmailSmtp() {
+  return String(process.env.SMTP_HOST || '').toLowerCase().includes('gmail');
+}
+
+function getSafeFromAddress() {
+  const configuredFrom = process.env.SMTP_FROM;
+  const smtpUser = process.env.SMTP_USER;
+
+  // Gmail SMTP is strict about From alignment. Using SMTP_USER improves
+  // acceptance on stricter receivers (e.g., university domains).
+  if (isGmailSmtp() && smtpUser) {
+    return `"Praksisportal" <${smtpUser}>`;
+  }
+
+  return configuredFrom || `"Praksisportal" <no-reply@praksisportal.no>`;
+}
+
 function getTransporter() {
   if (transporter) return transporter;
 
@@ -38,7 +55,7 @@ export async function sendNotificationEmail({ to, studentName, caseTitle, compan
   const transport = getTransporter();
   if (!transport) return; // email disabled — fail silently
 
-  const from = process.env.SMTP_FROM || `"Praksisportal" <no-reply@praksisportal.no>`;
+  const from = getSafeFromAddress();
 
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
@@ -75,5 +92,61 @@ export async function sendNotificationEmail({ to, studentName, caseTitle, compan
   } catch (err) {
     // Never let email errors break the publish flow
     console.error("[mailer] Failed to send notification email:", err.message);
+  }
+}
+
+/**
+ * Send a help/contact email from company publication flow to support recipients.
+ *
+ * @param {{ fromBusinessEmail: string, companyName: string, message: string, to?: string[] }} opts
+ */
+export async function sendCompanyHelpRequestEmail({ fromBusinessEmail, companyName, message, to }) {
+  const transport = getTransporter();
+  if (!transport) return;
+
+  const from = getSafeFromAddress();
+  const recipients = Array.isArray(to) && to.length > 0
+    ? to
+    : ['jonashar@hiof.no', 'jonhag1234@gmail.com'];
+
+  const safeCompany = companyName || 'Bedrift';
+  const safeSender = fromBusinessEmail || 'Ikke oppgitt';
+  const safeMessage = String(message || '').trim() || 'Ingen melding skrevet.';
+
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+    <h2 style="color:#2d6a4f;margin-top:0;">Ny henvendelse fra bedriftsportalen</h2>
+    <p style="color:#374151;">${safeCompany} har bedt om hjelp med publisering av prosjekt.</p>
+    <p style="color:#374151;margin:0 0 6px;"><strong>Avsender e-post:</strong> ${safeSender}</p>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid #2d6a4f;border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
+      <p style="margin:0;font-size:1rem;color:#111827;white-space:pre-wrap;">${safeMessage}</p>
+    </div>
+    <p style="color:#9ca3af;font-size:0.8rem;margin-top:32px;">
+      Sendt fra kontaktknappen i publiseringsflyten på Praksisportal.
+    </p>
+  </div>`;
+
+  const text = `Ny henvendelse fra bedriftsportalen\n\nBedrift: ${safeCompany}\nAvsender e-post: ${safeSender}\n\nMelding:\n${safeMessage}`;
+
+  try {
+    for (const recipient of recipients) {
+      const info = await transport.sendMail({
+        from,
+        to: recipient,
+        replyTo: safeSender !== 'Ikke oppgitt' ? safeSender : undefined,
+        subject: `Kontaktforespørsel fra ${safeCompany}`,
+        text,
+        html,
+      });
+
+      console.log('[mailer] support request delivery', {
+        recipient,
+        accepted: info.accepted,
+        rejected: info.rejected,
+        response: info.response,
+      });
+    }
+  } catch (err) {
+    console.error('[mailer] Failed to send support request email:', err.message);
   }
 }

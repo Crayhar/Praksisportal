@@ -233,7 +233,7 @@ export default function Apply({ userRole }) {
         <section className="hero hero-short">
           <div className="hero-content">
             <h1>Publiser praksisprosjekt</h1>
-            <p>Denne visningen er laget for studenter som skal sende søknad.</p>
+            <p>Her skal man i fremtiden kunne publisere praksisprosjekter manuelt. Foreløpig er funksjonaliteten under utvikling og man må bruke prosjektverktøyet lenket under.</p>
           </div>
         </section>
         <section className="contact section-compact">

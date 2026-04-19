@@ -1,5 +1,29 @@
 import { pool } from "../db.js";
 
+function organizeCompanyQualifications(qualifications) {
+  const organizedQuals = {
+    companyQualifications: [],
+    workAreas: [],
+    hiringFocus: [],
+  };
+
+  qualifications.forEach((qual) => {
+    switch (qual.qualification_type) {
+      case "core_qualification":
+        organizedQuals.companyQualifications.push(qual.value);
+        break;
+      case "work_area":
+        organizedQuals.workAreas.push(qual.value);
+        break;
+      case "hiring_focus":
+        organizedQuals.hiringFocus.push(qual.value);
+        break;
+    }
+  });
+
+  return organizedQuals;
+}
+
 // Student profile endpoints
 export const getStudentProfile = async (req, res) => {
   try {
@@ -33,6 +57,8 @@ export const getStudentProfile = async (req, res) => {
       currentSubjects: [],
       completedSubjects: [],
       preferredLocations: [],
+      preferredRoleTracks: [],
+      preferredWorkModes: [],
     };
 
     interests.forEach((interest) => {
@@ -52,6 +78,12 @@ export const getStudentProfile = async (req, res) => {
         case "preferred_location":
           organizedInterests.preferredLocations.push(interest.interest_value);
           break;
+        case "preferred_role_track":
+          organizedInterests.preferredRoleTracks.push(interest.interest_value);
+          break;
+        case "preferred_work_mode":
+          organizedInterests.preferredWorkModes.push(interest.interest_value);
+          break;
       }
     });
 
@@ -61,6 +93,9 @@ export const getStudentProfile = async (req, res) => {
       lastName: profile.last_name,
       email: profile.email,
       phone: profile.phone,
+      link1: profile.link1 || '',
+      link2: profile.link2 || '',
+      link3: profile.link3 || '',
       skills: skills.map((s) => ({
         name: s.skill_name,
         level: s.proficiency_level,
@@ -75,7 +110,22 @@ export const getStudentProfile = async (req, res) => {
 
 export const updateStudentProfile = async (req, res) => {
   try {
-    const { school, field, degreeLevel, graduationYear, location, bio, headline, notificationThreshold, phone } = req.body;
+    const {
+      school,
+      field,
+      degreeLevel,
+      graduationYear,
+      location,
+      bio,
+      headline,
+      notificationThreshold,
+      inAppNotificationsEnabled,
+      emailNotificationsEnabled,
+      phone,
+      link1,
+      link2,
+      link3,
+    } = req.body;
 
     // Update phone in users table if provided
     if (phone !== undefined) {
@@ -86,8 +136,23 @@ export const updateStudentProfile = async (req, res) => {
     }
 
     await pool.query(
-      "UPDATE student_profiles SET school = ?, field = ?, degree_level = ?, graduation_year = ?, location = ?, bio = ?, headline = ?, notification_threshold = ? WHERE user_id = ?",
-      [school, field, degreeLevel, graduationYear, location, bio, headline, notificationThreshold, req.userId]
+      "UPDATE student_profiles SET school = ?, field = ?, degree_level = ?, graduation_year = ?, location = ?, bio = ?, headline = ?, notification_threshold = ?, in_app_notifications_enabled = ?, email_notifications_enabled = ?, link1 = ?, link2 = ?, link3 = ? WHERE user_id = ?",
+      [
+        school,
+        field,
+        degreeLevel,
+        graduationYear,
+        location,
+        bio,
+        headline,
+        notificationThreshold,
+        inAppNotificationsEnabled !== false,
+        emailNotificationsEnabled === true,
+        link1 || null,
+        link2 || null,
+        link3 || null,
+        req.userId,
+      ]
     );
 
     res.json({ message: "Profile updated successfully" });
@@ -208,26 +273,7 @@ export const getCompanyProfile = async (req, res) => {
       [profile.id]
     );
 
-    // Organize qualifications by type
-    const organizedQuals = {
-      companyQualifications: [],
-      workAreas: [],
-      hiringFocus: [],
-    };
-
-    qualifications.forEach((qual) => {
-      switch (qual.qualification_type) {
-        case "core_qualification":
-          organizedQuals.companyQualifications.push(qual.value);
-          break;
-        case "work_area":
-          organizedQuals.workAreas.push(qual.value);
-          break;
-        case "hiring_focus":
-          organizedQuals.hiringFocus.push(qual.value);
-          break;
-      }
-    });
+    const organizedQuals = organizeCompanyQualifications(qualifications);
 
     res.json({
       ...profile,
@@ -266,26 +312,7 @@ export const updateCompanyProfile = async (req, res) => {
       [profile.id]
     );
 
-    // Organize qualifications by type
-    const organizedQuals = {
-      companyQualifications: [],
-      workAreas: [],
-      hiringFocus: [],
-    };
-
-    qualifications.forEach((qual) => {
-      switch (qual.qualification_type) {
-        case "core_qualification":
-          organizedQuals.companyQualifications.push(qual.value);
-          break;
-        case "work_area":
-          organizedQuals.workAreas.push(qual.value);
-          break;
-        case "hiring_focus":
-          organizedQuals.hiringFocus.push(qual.value);
-          break;
-      }
-    });
+    const organizedQuals = organizeCompanyQualifications(qualifications);
 
     res.json({
       ...profile,
@@ -335,5 +362,52 @@ export const removeCompanyQualification = async (req, res) => {
   } catch (error) {
     console.error("removeCompanyQualification error:", error);
     res.status(500).json({ error: "Failed to remove qualification" });
+  }
+};
+
+export const getCompanyProfileById = async (req, res) => {
+  try {
+    const companyId = Number.parseInt(req.params.companyId, 10);
+    if (!Number.isFinite(companyId)) {
+      return res.status(400).json({ error: "Invalid company id" });
+    }
+
+    const [profiles] = await pool.query(
+      "SELECT id, user_id, name, contact_person, email, phone, website, logo, industry, size, location, description, created_at, updated_at FROM company_profiles WHERE id = ?",
+      [companyId]
+    );
+
+    if (profiles.length === 0) {
+      return res.status(404).json({ error: "Company profile not found" });
+    }
+
+    const profile = profiles[0];
+    const [qualifications] = await pool.query(
+      "SELECT qualification_type, value FROM company_qualifications WHERE company_id = ?",
+      [companyId]
+    );
+
+    const organizedQuals = organizeCompanyQualifications(qualifications);
+
+    res.json({
+      id: profile.id,
+      userId: profile.user_id,
+      name: profile.name,
+      contactPerson: profile.contact_person,
+      email: profile.email,
+      phone: profile.phone,
+      website: profile.website,
+      logo: profile.logo,
+      industry: profile.industry,
+      size: profile.size,
+      location: profile.location,
+      description: profile.description,
+      createdAt: profile.created_at,
+      updatedAt: profile.updated_at,
+      ...organizedQuals,
+    });
+  } catch (error) {
+    console.error("getCompanyProfileById error:", error);
+    res.status(500).json({ error: "Failed to fetch company profile" });
   }
 };

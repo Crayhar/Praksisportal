@@ -56,7 +56,7 @@ export default function Signup() {
       token.set(data.token);
       setUser(data.user);
       setUserRole(data.user.role);
-      navigate(formData.role === "student" ? "/profile" : "/chatbot");
+      navigate(formData.role === "student" ? "/profile" : "/");
     } catch (err) {
       setError(err.message || "Registrering mislyktes");
     } finally {
@@ -70,6 +70,19 @@ export default function Signup() {
         <h1>Registrer deg</h1>
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
+
+          <div className="form-group">
+            <label htmlFor="role">Jeg er</label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+            >
+              <option value="student">Student</option>
+              <option value="company">Bedrift</option>
+            </select>
+          </div>
 
           {formData.role === "company" ? (
             <>
@@ -135,19 +148,6 @@ export default function Signup() {
               onChange={handleChange}
               required
             />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="role">Jeg er</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="student">Student</option>
-              <option value="company">Bedrift</option>
-            </select>
           </div>
 
           <div className="form-group">

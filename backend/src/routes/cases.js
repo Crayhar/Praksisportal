@@ -6,6 +6,7 @@ import {
   updateDraft,
   deleteDraft,
   publishDraft,
+  contactCaseSupport,
   listPublishedCases,
   getPublishedCase,
   updatePublishedCase,
@@ -22,6 +23,7 @@ router.get("/drafts/:draftId", verifyToken, getDraft);
 router.put("/drafts/:draftId", verifyToken, updateDraft);
 router.delete("/drafts/:draftId", verifyToken, deleteDraft);
 router.post("/drafts/:draftId/publish", verifyToken, publishDraft);
+router.post('/support/contact', verifyToken, contactCaseSupport);
 
 // Published cases routes (public read, authenticated write)
 router.get("/published", listPublishedCases);

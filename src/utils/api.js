@@ -81,6 +81,7 @@ export const studentProfile = {
 // Company profile endpoints
 export const companyProfile = {
   get: () => apiFetch("/api/profile/company"),
+  getById: (companyId) => apiFetch(`/api/profile/company/${companyId}`),
   update: (data) =>
     apiFetch("/api/profile/company", {
       method: "PUT",
@@ -131,6 +132,11 @@ export const cases = {
   deletePublished: (caseId) =>
     apiFetch(`/api/cases/published/${caseId}`, {
       method: "DELETE",
+    }),
+  contactSupport: (message) =>
+    apiFetch('/api/cases/support/contact', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
     }),
 };
 

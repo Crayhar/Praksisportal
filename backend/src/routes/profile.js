@@ -7,6 +7,7 @@ import {
   addStudentInterest,
   removeStudentInterest,
   getCompanyProfile,
+  getCompanyProfileById,
   updateCompanyProfile,
   addCompanyQualification,
   removeCompanyQualification,
@@ -25,6 +26,7 @@ router.delete("/student/interests/:interestId", verifyToken, removeStudentIntere
 
 // Company profile routes
 router.get("/company", verifyToken, getCompanyProfile);
+router.get("/company/:companyId", getCompanyProfileById);
 router.put("/company", verifyToken, updateCompanyProfile);
 router.post("/company/qualifications", verifyToken, addCompanyQualification);
 router.delete("/company/qualifications/:qualificationId", verifyToken, removeCompanyQualification);

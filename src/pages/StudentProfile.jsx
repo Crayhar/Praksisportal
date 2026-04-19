@@ -1,11 +1,47 @@
 import { useMemo, useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
 import { NotificationContext } from '../contexts/NotificationContext';
 import Footer from '../components/Footer';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { studentProfile, companyProfile, cases as casesAPI } from '../utils/api';
 import { exportStudentProfileToPdf } from '../utils/pdfExport';
+
+function getLinkDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+function getFaviconUrl(url) {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  } catch {
+    return null;
+  }
+}
+
+function getPhoneLink(phone) {
+  const normalized = String(phone || '').replace(/\s+/g, '');
+  return normalized ? `tel:${normalized}` : '';
+}
+
+function capitalizeFirstLetter(value) {
+  const input = String(value ?? '');
+  if (!input) return '';
+
+  const firstVisibleIndex = input.search(/\S/);
+  if (firstVisibleIndex === -1) return input;
+
+  return (
+    input.slice(0, firstVisibleIndex) +
+    input.charAt(firstVisibleIndex).toUpperCase() +
+    input.slice(firstVisibleIndex + 1)
+  );
+}
 
 function formatDate(dateString) {
   if (!dateString) {
@@ -162,11 +198,13 @@ function mapPublishedCaseToInternship(item) {
 
   return {
     id: item.id,
+    companyId: item.companyId,
     title: item.title,
     company: item.company || 'Bedrift',
     companyName: item.companyName || item.company || 'Bedrift',
     location: item.location,
-    description: item.taskDescription,
+    description: item.generatedAdData?.summary || item.taskDescription,
+    taskDescription: item.taskDescription,
     startDate: item.startDate,
     endDate: item.endDate,
     maxHours: item.maxHours,
@@ -181,6 +219,9 @@ function mapPublishedCaseToInternship(item) {
     assignmentContext: item.assignmentContext || item.taskDescription,
     deliveries: item.deliveries || '',
     expectations: item.expectations || '',
+    startWithin: item.startWithin || '',
+    roleTrack: item.roleTrack || '',
+    workMode: item.workMode || '',
   };
 }
 
@@ -188,8 +229,8 @@ function mapInternshipToCaseLike(internship) {
   return {
     title: internship.title,
     taskFocus: internship.title,
-    assignmentContext: internship.assignmentContext || internship.description,
-    taskDescription: internship.description,
+    assignmentContext: internship.assignmentContext || internship.taskDescription || internship.description,
+    taskDescription: internship.taskDescription || internship.description,
     deliveries: internship.deliveries || '',
     expectations: internship.expectations || '',
     requiredQualifications: internship.requiredQualifications?.join(', ') || internship.skills.join(', '),
@@ -199,6 +240,9 @@ function mapInternshipToCaseLike(internship) {
     endDate: internship.endDate,
     maxHours: internship.maxHours,
     location: internship.location,
+    startWithin: internship.startWithin || '',
+    roleTrack: internship.roleTrack || '',
+    workMode: internship.workMode || '',
     technicalTerms: internship.skills.join(', '),
   };
 }
@@ -290,6 +334,19 @@ export default function StudentProfile({ userRole }) {
             graduationYear: studentData.graduation_year,
             location: studentData.location || '',
             notificationThreshold: studentData.notification_threshold || 65,
+            inAppNotificationsEnabled:
+              studentData.in_app_notifications_enabled === undefined
+                ? true
+                : Boolean(studentData.in_app_notifications_enabled),
+            emailNotificationsEnabled:
+              studentData.email_notifications_enabled === undefined
+                ? false
+                : Boolean(studentData.email_notifications_enabled),
+            preferredRoleTracks: studentData.preferredRoleTracks || [],
+            preferredWorkModes: studentData.preferredWorkModes || [],
+            link1: studentData.link1 || '',
+            link2: studentData.link2 || '',
+            link3: studentData.link3 || ''
           };
 
           setStudent(formattedStudent);
@@ -324,9 +381,42 @@ export default function StudentProfile({ userRole }) {
     },
     [publishedCases, activeStudent]
   );
-  const notifications = activeStudent
-    ? caseMatches.filter((item) => item.scoreSummary.totalScore >= activeStudent.notificationThreshold)
+
+  const normalizeText = (value) =>
+    String(value || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const canonicalPlace = (value) =>
+    normalizeText(value)
+      .split(/[,/;|]/)[0]
+      .replace(/\b(norge|norway)\b/g, '')
+      .trim();
+
+  const locationMatchesPreference = (caseLocation, studentLocation) => {
+    const wanted = canonicalPlace(studentLocation);
+    if (!wanted) return true;
+
+    const currentRaw = normalizeText(caseLocation);
+    if (currentRaw === 'remote') return true;
+
+    const current = canonicalPlace(caseLocation);
+    return current === wanted;
+  };
+
+  const notifications = activeStudent && activeStudent.inAppNotificationsEnabled !== false
+    ? caseMatches.filter(
+      (item) =>
+        item.scoreSummary.totalScore >= activeStudent.notificationThreshold &&
+        locationMatchesPreference(item.location, activeStudent.location)
+    )
     : [];
+
+  const caseMatchScoreById = useMemo(
+    () => new Map(caseMatches.map((item) => [item.id, item.scoreSummary?.totalScore])),
+    [caseMatches]
+  );
 
   const updateStudentField = (name, value) => {
     setEditData((prev) => ({ ...prev, [name]: value }));
@@ -336,11 +426,26 @@ export default function StudentProfile({ userRole }) {
     setCompanyEditData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const capitalizeStudentField = (name) => {
+    setEditData((prev) => ({
+      ...prev,
+      [name]: capitalizeFirstLetter(prev?.[name] || ''),
+    }));
+  };
+
+  const capitalizeCompanyField = (name) => {
+    setCompanyEditData((prev) => ({
+      ...prev,
+      [name]: capitalizeFirstLetter(prev?.[name] || ''),
+    }));
+  };
+
   const addSkill = (skill) => {
     setEditData((prev) => {
-      const exists = prev.skills.some((item) => item.name.toLowerCase() === skill.name.toLowerCase());
+      const normalizedName = capitalizeFirstLetter(skill.name || '').trim();
+      const exists = prev.skills.some((item) => item.name.toLowerCase() === normalizedName.toLowerCase());
       if (exists) return prev;
-      return { ...prev, skills: [...prev.skills, skill] };
+      return { ...prev, skills: [...prev.skills, { ...skill, name: normalizedName }] };
     });
   };
 
@@ -367,15 +472,18 @@ export default function StudentProfile({ userRole }) {
   };
 
   const addTag = (field, value, isCompanyProfile = false) => {
+    const normalizedValue = capitalizeFirstLetter(value || '').trim();
+    if (!normalizedValue) return;
+
     if (isCompanyProfile) {
       setCompanyEditData((prev) => ({
         ...prev,
-        [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
+        [field]: prev[field].includes(normalizedValue) ? prev[field] : [...prev[field], normalizedValue],
       }));
     } else {
       setEditData((prev) => ({
         ...prev,
-        [field]: prev[field].includes(value) ? prev[field] : [...prev[field], value],
+        [field]: prev[field].includes(normalizedValue) ? prev[field] : [...prev[field], normalizedValue],
       }));
     }
   };
@@ -421,6 +529,8 @@ export default function StudentProfile({ userRole }) {
           currentSubjects: 'current_subject',
           completedSubjects: 'completed_subject',
           preferredLocations: 'preferred_location',
+          preferredRoleTracks: 'preferred_role_track',
+          preferredWorkModes: 'preferred_work_mode',
         };
 
         // Save new interests
@@ -516,11 +626,53 @@ export default function StudentProfile({ userRole }) {
                   <>
                     {profileData.headline && <p className="bio">{profileData.headline}</p>}
                     {profileData.bio && <p className="bio bio-secondary">{profileData.bio}</p>}
+                    {(() => {
+                      const links = [profileData.link1, profileData.link2, profileData.link3].filter(Boolean);
+                      return links.length > 0 ? (
+                        <div className="profile-links">
+                          {links.map((link) => (
+                            <a
+                              key={link}
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="profile-link-btn"
+                            >
+                              <img
+                                src={getFaviconUrl(link)}
+                                alt=""
+                                className="profile-link-icon"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                              <span>{getLinkDomain(link)}</span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                   </>
                 )}
                 <div className="profile-details">
-                  <span>📧 {profileData.email || 'Ikke satt'}</span>
-                  <span>📱 {profileData.phone || 'Ikke satt'}</span>
+                  <span>
+                    📧 {' '}
+                    {profileData.email ? (
+                      <a className="profile-email-link" href={`mailto:${profileData.email}`}>
+                        {profileData.email}
+                      </a>
+                    ) : (
+                      'Ikke satt'
+                    )}
+                  </span>
+                  <span>
+                    📱{' '}
+                    {profileData.phone ? (
+                      <a className="profile-phone-link" href={getPhoneLink(profileData.phone)}>
+                        {profileData.phone}
+                      </a>
+                    ) : (
+                      'Ikke satt'
+                    )}
+                  </span>
                   <span>
                     {isCompany
                       ? `🏢 ${profileData.industry || 'Ikke satt'} • ${profileData.size || 'Ikke satt'}`
@@ -532,23 +684,67 @@ export default function StudentProfile({ userRole }) {
                       : `📍 ${profileData.location || 'Ikke satt'} • Varselterskel ${profileData.notificationThreshold}%`}
                   </span>
                 </div>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setIsEditing(true)}
-                  disabled={saving}
-                >
-                  {isCompany ? 'Rediger bedriftsprofil' : 'Rediger studentprofil'}
-                </button>
+                {!isCompany ? (
+                  <div className="notification-settings-summary">
+                    <p className="notification-settings-summary-title">Varslingsinnstillinger</p>
+                    <div className="notification-settings-summary-row">
+                      <span className={`status-badge ${profileData.inAppNotificationsEnabled !== false ? 'badge-accepted' : 'badge-rejected'}`}>
+                        In-app: {profileData.inAppNotificationsEnabled !== false ? 'På' : 'Av'}
+                      </span>
+                      <span className={`status-badge ${profileData.emailNotificationsEnabled === true ? 'badge-accepted' : 'badge-rejected'}`}>
+                        E-post: {profileData.emailNotificationsEnabled === true ? 'På' : 'Av'}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+
                 {!isCompany && (
+                  <>
+                    {(profileData.preferredRoleTracks || []).length > 0 && (
+                      <div className="chip-section">
+                        <p className="chip-section-label">Foretrukne fagretninger</p>
+                        <div className="chip-list">
+                          {(profileData.preferredRoleTracks || []).map((rt) => (
+                            <span key={rt} className="chip">
+                              {rt === 'frontend' ? 'Frontend' : rt === 'ux' ? 'UX / Design' : rt === 'data' ? 'Data / Analyse' : rt === 'fullstack' ? 'Full Stack' : rt === 'backend' ? 'Backend' : 'Generell'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(profileData.preferredWorkModes || []).length > 0 && (
+                      <div className="chip-section">
+                        <p className="chip-section-label">Foretrukket arbeidsform</p>
+                        <div className="chip-list">
+                          {(profileData.preferredWorkModes || []).map((wm) => (
+                            <span key={wm} className="chip">
+                              {wm === 'onsite' ? 'På stedet' : wm === 'hybrid' ? 'Hybrid' : 'Hjemmefra / Remote'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="profile-header-actions">
                   <button
                     className="btn btn-secondary"
-                    onClick={handleDownloadProfilePdf}
+                    onClick={() => setIsEditing(true)}
                     disabled={saving}
-                    style={{ marginLeft: '10px' }}
                   >
-                    Last ned profil (PDF)
+                    {isCompany ? 'Rediger bedriftsprofil' : 'Rediger studentprofil'}
                   </button>
-                )}
+                  {!isCompany && (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={handleDownloadProfilePdf}
+                      disabled={saving}
+                    >
+                      Last ned profil (PDF)
+                    </button>
+                  )}
+                </div>
                 {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
               </>
             ) : (
@@ -561,6 +757,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={companyEditData.name}
                         onChange={(event) => updateCompanyField('name', event.target.value)}
+                        onBlur={() => capitalizeCompanyField('name')}
                         disabled={saving}
                       />
                     </div>
@@ -570,6 +767,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={companyEditData.contactPerson || ''}
                         onChange={(event) => updateCompanyField('contactPerson', event.target.value)}
+                        onBlur={() => capitalizeCompanyField('contactPerson')}
                         disabled={saving}
                       />
                     </div>
@@ -606,6 +804,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={companyEditData.location || ''}
                         onChange={(event) => updateCompanyField('location', event.target.value)}
+                        onBlur={() => capitalizeCompanyField('location')}
                         disabled={saving}
                       />
                     </div>
@@ -615,6 +814,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={companyEditData.size || ''}
                         onChange={(event) => updateCompanyField('size', event.target.value)}
+                        onBlur={() => capitalizeCompanyField('size')}
                         disabled={saving}
                       />
                     </div>
@@ -624,6 +824,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={companyEditData.industry || ''}
                         onChange={(event) => updateCompanyField('industry', event.target.value)}
+                        onBlur={() => capitalizeCompanyField('industry')}
                         disabled={saving}
                       />
                     </div>
@@ -645,6 +846,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={editData.firstName}
                         onChange={(event) => updateStudentField('firstName', event.target.value)}
+                        onBlur={() => capitalizeStudentField('firstName')}
                         disabled={saving}
                       />
                     </div>
@@ -654,6 +856,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={editData.lastName}
                         onChange={(event) => updateStudentField('lastName', event.target.value)}
+                        onBlur={() => capitalizeStudentField('lastName')}
                         disabled={saving}
                       />
                     </div>
@@ -663,6 +866,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={editData.headline}
                         onChange={(event) => updateStudentField('headline', event.target.value)}
+                        onBlur={() => capitalizeStudentField('headline')}
                         disabled={saving}
                       />
                     </div>
@@ -699,6 +903,7 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={editData.location}
                         onChange={(event) => updateStudentField('location', event.target.value)}
+                        onBlur={() => capitalizeStudentField('location')}
                         disabled={saving}
                       />
                     </div>
@@ -708,6 +913,18 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={editData.school || ''}
                         onChange={(event) => updateStudentField('school', event.target.value)}
+                        onBlur={() => capitalizeStudentField('school')}
+                        disabled={saving}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Studieretning / fagfelt</label>
+                      <input
+                        type="text"
+                        value={editData.field || ''}
+                        onChange={(event) => updateStudentField('field', event.target.value)}
+                        placeholder="For eksempel Informatikk"
+                        onBlur={() => capitalizeStudentField('field')}
                         disabled={saving}
                       />
                     </div>
@@ -717,6 +934,8 @@ export default function StudentProfile({ userRole }) {
                         type="text"
                         value={editData.degreeLevel || ''}
                         onChange={(event) => updateStudentField('degreeLevel', event.target.value)}
+                        placeholder="For eksempel Bachelor"
+                        onBlur={() => capitalizeStudentField('degreeLevel')}
                         disabled={saving}
                       />
                     </div>
@@ -739,6 +958,67 @@ export default function StudentProfile({ userRole }) {
                         onChange={(event) => updateStudentField('notificationThreshold', Number(event.target.value))}
                         disabled={saving}
                       />
+                    </div>
+                    <div className="form-group notification-toggle-group">
+                      <label className="notification-toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editData.inAppNotificationsEnabled)}
+                          onChange={(event) => updateStudentField('inAppNotificationsEnabled', event.target.checked)}
+                          disabled={saving}
+                        />
+                        <span>In-app varslinger</span>
+                        <small className="notification-toggle-hint"></small>
+                      </label>
+                    </div>
+                    <div className="form-group notification-toggle-group">
+                      <label className="notification-toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editData.emailNotificationsEnabled)}
+                          onChange={(event) => updateStudentField('emailNotificationsEnabled', event.target.checked)}
+                          disabled={saving}
+                        />
+                        <span>E-postvarslinger</span>
+                        <small className="notification-toggle-hint"></small>
+                      </label>
+                    </div>
+                    <div className="link-editor">
+                      <p className="tag-editor-label"><strong>Lenker</strong></p>
+                      <div className="form-group">
+                        <label>Lenke 1</label>
+                        <input
+                          type="url"
+                          value={editData.link1 || ''}
+                          onChange={(event) => updateStudentField('link1', event.target.value)}
+                          placeholder="https://linkedin.com/in/ditt-navn"
+                          disabled={saving}
+                        />
+                      </div>
+                      {editData.link1?.trim() && (
+                        <div className="form-group">
+                          <label>Lenke 2</label>
+                          <input
+                            type="url"
+                            value={editData.link2 || ''}
+                            onChange={(event) => updateStudentField('link2', event.target.value)}
+                            placeholder="https://github.com/ditt-navn"
+                            disabled={saving}
+                          />
+                        </div>
+                      )}
+                      {editData.link1?.trim() && editData.link2?.trim() && (
+                        <div className="form-group">
+                          <label>Lenke 3</label>
+                          <input
+                            type="url"
+                            value={editData.link3 || ''}
+                            onChange={(event) => updateStudentField('link3', event.target.value)}
+                            placeholder="https://portfolio.example.com"
+                            disabled={saving}
+                          />
+                        </div>
+                      )}
                     </div>
                     <SkillEditor
                       skills={editData.skills}
@@ -787,6 +1067,61 @@ export default function StudentProfile({ userRole }) {
                       placeholder="For eksempel Oslo"
                       loading={saving}
                     />
+                    <div className="tag-editor">
+                      <p className="tag-editor-label"><strong>Foretrukne fagretninger</strong></p>
+                      <p className="form-hint">Velg hvilke typer oppdrag du er mest interessert i. Brukes i matchmaking.</p>
+                      <div className="filter-multi-list filter-multi-list-inline">
+                        {[
+                          { key: 'frontend', label: 'Frontend' },
+                          { key: 'ux', label: 'UX / Design' },
+                          { key: 'data', label: 'Data / Analyse' },
+                          { key: 'fullstack', label: 'Full Stack' },
+                          { key: 'backend', label: 'Backend' },
+                          { key: 'unsure', label: 'Generell / Usikker' },
+                        ].map(({ key, label }) => (
+                          <label key={key} className="filter-check">
+                            <input
+                              type="checkbox"
+                              checked={(editData.preferredRoleTracks || []).includes(key)}
+                              onChange={() => {
+                                const current = editData.preferredRoleTracks || [];
+                                updateStudentField('preferredRoleTracks',
+                                  current.includes(key) ? current.filter(v => v !== key) : [...current, key]
+                                );
+                              }}
+                              disabled={saving}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="tag-editor">
+                      <p className="tag-editor-label"><strong>Foretrukket arbeidsform</strong></p>
+                      <p className="form-hint">Brukes i matchmaking.</p>
+                      <div className="filter-multi-list filter-multi-list-inline">
+                        {[
+                          { key: 'onsite', label: 'På stedet' },
+                          { key: 'hybrid', label: 'Hybrid' },
+                          { key: 'remote', label: 'Hjemmefra / Remote' },
+                        ].map(({ key, label }) => (
+                          <label key={key} className="filter-check">
+                            <input
+                              type="checkbox"
+                              checked={(editData.preferredWorkModes || []).includes(key)}
+                              onChange={() => {
+                                const current = editData.preferredWorkModes || [];
+                                updateStudentField('preferredWorkModes',
+                                  current.includes(key) ? current.filter(v => v !== key) : [...current, key]
+                                );
+                              }}
+                              disabled={saving}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   </>
                 )}
                 <div className="form-actions">
@@ -847,7 +1182,9 @@ export default function StudentProfile({ userRole }) {
                       {!n.isRead && <span className="notif-dot" aria-hidden="true" />}
                       <div className="notif-item-text">
                         <span className="notif-item-title">{n.caseTitle}</span>
-                        <span className="notif-item-meta">{n.companyName} · {n.matchScore}% match</span>
+                        <span className="notif-item-meta">
+                          {n.companyName} · {caseMatchScoreById.get(n.caseId) ?? n.matchScore}% match
+                        </span>
                       </div>
                       <div className="notif-item-actions">
                         <button
@@ -912,7 +1249,19 @@ export default function StudentProfile({ userRole }) {
                       </div>
                     ) : null}
                     <h3>{notice.title}</h3>
-                    <p className="company">🏢 {notice.company}</p>
+                    <p className="company">
+                      🏢{' '}
+                      {notice.companyId ? (
+                        <Link
+                          className="company-profile-link"
+                          to={`/companies/${notice.companyId}`}
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          {notice.company}
+                        </Link>
+                      ) : notice.company}
+                    </p>
                     <p className="location">📍 {notice.location}</p>
                     <p>{notice.description}</p>
                     <p className="internship-meta">

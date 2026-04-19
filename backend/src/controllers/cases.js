@@ -1,6 +1,6 @@
 import { pool } from "../db.js";
 import { computeMatchScore } from "../utils/scoring.js";
-import { sendNotificationEmail } from "../utils/mailer.js";
+import { sendCompanyHelpRequestEmail, sendNotificationEmail } from "../utils/mailer.js";
 
 // Converts a qualification value (string or array) to a clean array
 const toArray = (val) => {
@@ -25,6 +25,8 @@ const serializeCase = async (caseRecord) => {
     pool.query("SELECT qualification_type, value FROM case_qualifications WHERE case_id = ?", [caseRecord.id]),
   ]);
 
+  const companyName = (companyRow && companyRow[0]?.name) || "Bedrift";
+
   let offerings = [];
   try {
     const [offeringRows] = await pool.query(
@@ -38,8 +40,6 @@ const serializeCase = async (caseRecord) => {
       throw err;
     }
   }
-
-  const companyName = companyRow?.name || "Bedrift";
 
   const organizedQuals = {
     companyQualifications: [],
@@ -72,6 +72,19 @@ const serializeCase = async (caseRecord) => {
     }
   });
 
+  // Parse generatedAdData if it's a JSON string
+  let generatedAdData = null;
+  if (caseRecord.generated_ad) {
+    try {
+      generatedAdData = typeof caseRecord.generated_ad === 'string'
+        ? JSON.parse(caseRecord.generated_ad)
+        : caseRecord.generated_ad;
+    } catch (err) {
+      // If parsing fails, keep it as is
+      generatedAdData = null;
+    }
+  }
+
   return {
     id: caseRecord.id,
     companyId: caseRecord.company_id,
@@ -97,6 +110,7 @@ const serializeCase = async (caseRecord) => {
     startWithin: caseRecord.start_within,
     maxHours: caseRecord.max_hours,
     generatedAd: caseRecord.generated_ad,
+    generatedAdData,
     classification: caseRecord.classification,
     publishedAt: caseRecord.published_at,
     createdAt: caseRecord.created_at,
@@ -123,6 +137,46 @@ const checkCaseOwnership = async (userId, caseId) => {
   );
 
   return !!company;
+};
+
+export const contactCaseSupport = async (req, res) => {
+  try {
+    const message = String(req.body?.message || '').trim();
+    if (!message) {
+      return res.status(400).json({ error: 'Melding er påkrevd.' });
+    }
+
+    const [[sender]] = await pool.query(
+      `SELECT u.role, u.email AS user_email, cp.name AS company_name, cp.email AS company_email
+       FROM users u
+       LEFT JOIN company_profiles cp ON cp.user_id = u.id
+       WHERE u.id = ?`,
+      [req.userId]
+    );
+
+    if (!sender) {
+      return res.status(404).json({ error: 'Bruker ikke funnet.' });
+    }
+
+    if (sender.role !== 'company' && sender.role !== 'admin') {
+      return res.status(403).json({ error: 'Kun bedrifter kan sende hjelpesporsmal.' });
+    }
+
+    const fromBusinessEmail = sender.company_email || sender.user_email;
+    const companyName = sender.company_name || 'Bedrift';
+
+    await sendCompanyHelpRequestEmail({
+      fromBusinessEmail,
+      companyName,
+      message,
+      to: ['jonashar@hiof.no', 'jonhag1234@gmail.com'],
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('contactCaseSupport error:', error);
+    res.status(500).json({ error: 'Kunne ikke sende kontaktforesporsel.' });
+  }
 };
 
 // Draft cases endpoints
@@ -486,11 +540,16 @@ const generateNotificationsForCase = async (caseId) => {
       requiredQuals,
       preferredQuals,
       personalQuals,
+       roleTrack: caseRow.role_track || "",
+       workMode: caseRow.work_mode || "",
+       location: caseRow.location || "",
     };
 
     // Fetch all student profiles with threshold
     const [students] = await pool.query(
       `SELECT sp.id AS profile_id, sp.user_id, sp.notification_threshold,
+              sp.in_app_notifications_enabled, sp.email_notifications_enabled,
+              sp.field,
               u.email, u.first_name, u.last_name
        FROM student_profiles sp
        JOIN users u ON sp.user_id = u.id
@@ -499,6 +558,12 @@ const generateNotificationsForCase = async (caseId) => {
 
     for (const student of students) {
       const threshold = student.notification_threshold || 65;
+      const inAppEnabled = student.in_app_notifications_enabled !== 0;
+      const emailEnabled = student.email_notifications_enabled === 1;
+
+      if (!inAppEnabled && !emailEnabled) {
+        continue;
+      }
 
       // Fetch student's skills (with proficiency level) and interests
       const [skills] = await pool.query(
@@ -516,19 +581,29 @@ const generateNotificationsForCase = async (caseId) => {
         completedSubjects: interests.filter((i) => i.interest_type === "completed_subject").map((i) => i.interest_value),
         personalChars: interests.filter((i) => i.interest_type === "personal_characteristic").map((i) => i.interest_value),
         professionalInterests: interests.filter((i) => i.interest_type === "professional_interest").map((i) => i.interest_value),
+         preferredLocations: interests.filter((i) => i.interest_type === "preferred_location").map((i) => i.interest_value),
+         preferredRoleTracks: interests.filter((i) => i.interest_type === "preferred_role_track").map((i) => i.interest_value),
+         preferredWorkModes: interests.filter((i) => i.interest_type === "preferred_work_mode").map((i) => i.interest_value),
+         field: student.field || "",
       };
 
       const score = computeMatchScore(caseInfo, studentInfo);
 
       if (score >= threshold) {
-        // Insert, ignore duplicate (case already notified to this student)
-        const [result] = await pool.query(
-          "INSERT IGNORE INTO notifications (user_id, case_id, match_score) VALUES (?, ?, ?)",
-          [student.user_id, caseId, score]
-        );
+        let createdInAppNotification = false;
 
-        // Only send email for genuinely new notifications (not duplicates)
-        if (result.affectedRows > 0) {
+        if (inAppEnabled) {
+          // Insert, ignore duplicate (case already notified to this student)
+          const [result] = await pool.query(
+            "INSERT IGNORE INTO notifications (user_id, case_id, match_score) VALUES (?, ?, ?)",
+            [student.user_id, caseId, score]
+          );
+          createdInAppNotification = result.affectedRows > 0;
+        }
+
+        // Email notifications are controlled separately and disabled by default.
+        // If in-app is enabled, only send email on truly new notifications.
+        if (emailEnabled && (!inAppEnabled || createdInAppNotification)) {
           sendNotificationEmail({
             to: student.email,
             studentName: student.first_name,

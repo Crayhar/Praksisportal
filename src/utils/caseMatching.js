@@ -397,9 +397,13 @@ export function scoreCaseAgainstStudent(caseData, studentProfile) {
   const { required, preferred } = getProfessionalQuals(caseData);
   const personalRequirements = parseList(caseData.personalQualifications);
   const studentSkills = getStudentSkills(studentProfile);
+
+  // Include degree field as an implied subject for matching
+  const fieldSubjects = studentProfile.field ? [studentProfile.field] : [];
   const subjectPool = [
     ...studentProfile.currentSubjects,
     ...studentProfile.completedSubjects,
+    ...fieldSubjects,
   ];
 
   // Improvement 1+2+3: required/preferred weighted separately, with proficiency + synonyms
@@ -428,10 +432,43 @@ export function scoreCaseAgainstStudent(caseData, studentProfile) {
   // Improvement 4: expanded subject map used here
   const subjectMatches = scoreList(inferRelevantSubjects(caseData), subjectPool);
 
+  // Preference alignment: role track, work mode, location
+  let preferenceScore = 100;
+  let preferenceFactors = 0;
+  let preferenceTotal = 0;
+
+  const preferredRoleTracks = studentProfile.preferredRoleTracks || [];
+  if (preferredRoleTracks.length > 0 && caseData.roleTrack) {
+    preferenceFactors++;
+    preferenceTotal += preferredRoleTracks.includes(caseData.roleTrack) ? 100 : 0;
+  }
+
+  const preferredWorkModes = studentProfile.preferredWorkModes || [];
+  if (preferredWorkModes.length > 0 && caseData.workMode) {
+    preferenceFactors++;
+    preferenceTotal += preferredWorkModes.includes(caseData.workMode) ? 100 : 0;
+  }
+
+  const preferredLocations = studentProfile.preferredLocations || [];
+  if (preferredLocations.length > 0 && caseData.location) {
+    const normLoc = (v) => (v || '').toLowerCase().split(/[,/;|]/)[0].replace(/\b(norge|norway)\b/g, '').trim();
+    const caseLocNorm = normLoc(caseData.location);
+    const isRemote = caseLocNorm === 'remote';
+    preferenceFactors++;
+    preferenceTotal += (isRemote || preferredLocations.some((l) => normLoc(l) === caseLocNorm)) ? 100 : 0;
+  }
+
+  if (preferenceFactors > 0) {
+    preferenceScore = Math.round(preferenceTotal / preferenceFactors);
+  }
+
+  // Weights: professional 45%, personal 20%, subjects 20%, preferences 15%
+  const hasPreferences = preferenceFactors > 0;
   const totalScore = Math.round(
-    professionalScore.score * 0.5 +
-    personalScore.score * 0.25 +
-    subjectMatches.score * 0.25
+    professionalScore.score * (hasPreferences ? 0.45 : 0.50) +
+    personalScore.score * (hasPreferences ? 0.20 : 0.25) +
+    subjectMatches.score * (hasPreferences ? 0.20 : 0.25) +
+    (hasPreferences ? preferenceScore * 0.15 : 0)
   );
 
   const rankedSkillMatches = studentSkills

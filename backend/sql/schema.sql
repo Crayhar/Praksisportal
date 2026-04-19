@@ -22,6 +22,8 @@ CREATE TABLE student_profiles (
     bio TEXT,
     headline VARCHAR(255),
     notification_threshold INT DEFAULT 65,
+    in_app_notifications_enabled BOOLEAN DEFAULT TRUE,
+    email_notifications_enabled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_student_profiles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -47,7 +49,9 @@ CREATE TABLE student_interests (
         'professional_interest',
         'current_subject',
         'completed_subject',
-        'preferred_location'
+        'preferred_location',
+        'preferred_role_track',
+        'preferred_work_mode'
     ) NOT NULL,
     interest_value VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

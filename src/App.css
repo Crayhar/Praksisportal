@@ -146,7 +146,8 @@ textarea {
 .nav-link-icon svg {
   width: 100%;
   height: 100%;
-  fill: currentColor;
+  fill: none;
+  stroke: currentColor;
 }
 
 .nav-tooltip {
@@ -347,6 +348,13 @@ textarea {
   gap: 2rem;
 }
 
+.feature-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  height: 100%;
+}
+
 .feature-card {
   background: var(--white);
   padding: 30px;
@@ -354,6 +362,7 @@ textarea {
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  height: 100%;
 }
 
 .feature-card:hover {
@@ -858,6 +867,44 @@ input[type="checkbox"] {
   font-size: 0.95rem;
 }
 
+.profile-details .profile-email-link,
+.profile-details .profile-phone-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1.5px;
+  cursor: pointer;
+}
+
+.profile-details .profile-email-link:hover,
+.profile-details .profile-phone-link:hover {
+  opacity: 0.88;
+  text-decoration-thickness: 2px;
+}
+
+.company-profile-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.company-profile-link:hover {
+  opacity: 0.85;
+}
+
+.company-public-page {
+  min-height: 70vh;
+}
+
+.company-public-state {
+  text-align: center;
+  padding: 2rem;
+}
+
+.company-public-error {
+  color: #c53232;
+}
+
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -1018,13 +1065,24 @@ input[type="checkbox"] {
 }
 
 /* Shared: chip/tag patterns used in StudentProfile.jsx and Apply.jsx */
+.chip-section {
+  margin-top: 14px;
+}
+
+.chip-section-label {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0 0 4px;
+}
+
 .chip-list,
 .tag-editor-list,
 .apply-chip-list {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .chip,
@@ -1081,6 +1139,100 @@ input[type="checkbox"] {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.profile-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.profile-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.profile-link-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.profile-link-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.link-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notification-settings-summary {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.notification-settings-summary-title {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.notification-settings-summary-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.notification-toggle-group {
+  margin-top: 2px;
+}
+
+.notification-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notification-toggle-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #4caf50;
+}
+
+.notification-toggle-hint {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.82rem;
 }
 
 .tag-editor-chip {
@@ -1510,6 +1662,64 @@ input[type="checkbox"] {
   cursor: default;
 }
 
+.field-label {
+  display: inline-block;
+  transition: color 0.18s ease;
+}
+
+.case-grid label:hover .field-label,
+.case-grid .full:hover > .field-label,
+.case-grid > div:hover > .field-label {
+  color: #347e84;
+}
+
+.example-picker-wrapper {
+  position: relative;
+}
+
+.example-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  background: #ffffff;
+  border: 1px solid #d9e6e7;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(18, 48, 51, 0.14);
+  padding: 14px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.example-picker-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b8f92;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.example-picker-option {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: #123033;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.example-picker-option:hover {
+  background: #eaf5f5;
+  color: #347e84;
+}
+
 .case-status {
   padding: 12px 14px;
   border-radius: 14px;
@@ -1519,6 +1729,19 @@ input[type="checkbox"] {
 }
 
 .metric-card {
+.help-composer {
+  min-width: 280px;
+}
+
+.help-composer-textarea {
+  min-height: 110px;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.help-composer-send {
+  width: 100%;
+}
   padding: 16px;
   border-radius: 16px;
   background: #f4f9fa;
@@ -1629,6 +1852,22 @@ input[type="checkbox"] {
 .case-output {
   margin-top: 12px;
   color: #17393c;
+}
+
+.case-output-editor-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.case-output-editor {
+  min-height: 260px;
+}
+
+.case-output-live-preview {
+  border: 1px solid #d9e6e7;
+  border-radius: 12px;
+  background: #f8fcfc;
+  padding: 12px 14px;
 }
 
 .case-output > * + * {
@@ -2237,6 +2476,44 @@ input[type="checkbox"] {
 .filter-select:focus {
   outline: 2px solid var(--primary-color);
   outline-offset: 1px;
+}
+
+.filter-multi-list {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.filter-multi-list-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: none;
+  overflow-y: visible;
+}
+
+.form-hint {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 2px 0 8px;
+}
+
+.filter-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: #1a202c;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.filter-check input[type='checkbox'] {
+  accent-color: var(--primary-color);
 }
 
 .filter-clear-btn {
