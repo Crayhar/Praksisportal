@@ -11,8 +11,6 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { auth, token as tokenUtils } from './utils/api';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
 
 export const AuthContext = createContext(null);
 
