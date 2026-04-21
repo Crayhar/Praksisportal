@@ -7,6 +7,40 @@ import InternshipDetailsModal from '../components/InternshipDetailsModal';
 import { defaultStudentProfile } from '../data/portalData';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
+import { getOfferingLabels } from '../utils/offerings';
+
+const OFFERING_LABELS = {
+  workplace: 'Mulighet for jobb etter oppdraget',
+  certification: 'Sertifisering gjennom jobben',
+  reference: 'Attest / referanse',
+  mentorship: 'Fast mentor og tett oppfolging',
+};
+
+const WORK_MODE_MAP = {
+  onsite: 'På stedet',
+  hybrid: 'Hybrid',
+  remote: 'Hjemmefra',
+  hjemmefra: 'Hjemmefra',
+  online: 'Hjemmefra',
+};
+
+const WORK_MODE_OPTIONS = ['onsite', 'hybrid', 'remote'];
+
+function cleanLocationValue(location) {
+  if (!location) return '';
+  const val = String(location).toLowerCase().trim();
+  const workModeKeywords = ['remote', 'online', 'hjemmefra', 'hybrid', 'on-site', 'onsite'];
+  if (workModeKeywords.some(kw => val === kw || val.includes(kw))) {
+    return '';
+  }
+  return location;
+}
+
+function removeNorwayFromLocation(location) {
+  if (!location) return '';
+  // Remove ", norge" or ",norge" suffixes (case-insensitive)
+  return String(location).replace(/,\s*norge\s*$/i, '').trim();
+}
 
 function mapPublishedCaseToInternship(item) {
   const toStringArray = (val) =>
@@ -21,7 +55,7 @@ function mapPublishedCaseToInternship(item) {
     title: item.generatedAdData?.title || item.title,
     company: item.companyName || item.logo || 'Bedrift',
     companyName: item.companyName || item.logo || 'Bedrift',
-    location: item.location,
+    location: removeNorwayFromLocation(item.location),
     description: item.generatedAdData?.summary || item.taskDescription,
     taskDescription: item.taskDescription,
     startDate: item.startDate,
@@ -95,7 +129,7 @@ export default function Internships({ userRole }) {
   const [filters, setFilters] = useState({
     location: [],
     workMode: [],
-    classification: [],
+    offerings: [],
     roleTrack: [],
     startWithin: [],
   });
@@ -152,12 +186,19 @@ export default function Internships({ userRole }) {
 
   const filterOptions = useMemo(() => {
     const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'no'));
+    
+    const locations = uniq(internshipFeed.map((i) => cleanLocationValue(i.location)));
+    const workModes = WORK_MODE_OPTIONS;
+    const offerings = uniq(internshipFeed.flatMap((i) => i.offerings || []));
+    const roleTracks = uniq(internshipFeed.map((i) => i.roleTrack));
+    const startWithins = uniq(internshipFeed.map((i) => i.startWithin));
+    
     return {
-      locations: uniq(internshipFeed.map((i) => i.location)),
-      workModes: uniq(internshipFeed.map((i) => i.workMode)),
-      classifications: uniq(internshipFeed.map((i) => i.classification)),
-      roleTracks: uniq(internshipFeed.map((i) => i.roleTrack)),
-      startWithins: uniq(internshipFeed.map((i) => i.startWithin)),
+      locations,
+      workModes,
+      offerings,
+      roleTracks,
+      startWithins,
     };
   }, [internshipFeed]);
 
@@ -185,7 +226,7 @@ export default function Internships({ userRole }) {
     setFilters({
       location: [],
       workMode: [],
-      classification: [],
+      offerings: [],
       roleTrack: [],
       startWithin: [],
     });
@@ -198,6 +239,20 @@ export default function Internships({ userRole }) {
         .toLowerCase()
         .replace(/\s+/g, ' ')
         .trim();
+
+    const normalizeWorkMode = (value) => {
+      const normalized = normalize(value);
+      if (normalized === 'remote' || normalized === 'hjemmefra' || normalized === 'online') {
+        return 'remote';
+      }
+      if (normalized === 'on-site' || normalized === 'onsite' || normalized === 'på stedet') {
+        return 'onsite';
+      }
+      if (normalized === 'hybrid') {
+        return 'hybrid';
+      }
+      return normalized;
+    };
 
     const canonicalLocation = (value) =>
       normalize(value)
@@ -221,6 +276,18 @@ export default function Internships({ userRole }) {
       });
     };
 
+    const matchesWorkMode = (selectedValues, currentValue) => {
+      if (selectedValues.length === 0) return true;
+      const current = normalizeWorkMode(currentValue);
+      return selectedValues.includes(current);
+    };
+
+    const matchesOfferings = (selectedValues, currentValues) => {
+      if (selectedValues.length === 0) return true;
+      const current = Array.isArray(currentValues) ? currentValues : [];
+      return selectedValues.some((selected) => current.includes(selected));
+    };
+
     let filtered = internshipFeed.filter((internship) => {
       // Text search
       if (
@@ -230,21 +297,21 @@ export default function Internships({ userRole }) {
         !(internship.location || '').toLowerCase().includes(query)
       ) return false;
       // Filters
-      const locationValue = internship.location || '';
+      const locationValue = cleanLocationValue(internship.location) || '';
       const workModeValue = internship.workMode || '';
-      const classificationValue = internship.classification || '';
+      const offeringsValue = internship.offerings || [];
       const roleTrackValue = internship.roleTrack || '';
       const startWithinValue = internship.startWithin || '';
 
       const passLocation = matchesLocation(filters.location, locationValue);
-      const passWorkMode = matchesSelection(filters.workMode, workModeValue);
-      const passClassification = matchesSelection(filters.classification, classificationValue);
+      const passWorkMode = matchesWorkMode(filters.workMode, workModeValue);
+      const passOfferings = matchesOfferings(filters.offerings, offeringsValue);
       const passRoleTrack = matchesSelection(filters.roleTrack, roleTrackValue);
       const passStartWithin = matchesSelection(filters.startWithin, startWithinValue, true);
 
       if (!passLocation) return false;
       if (!passWorkMode) return false;
-      if (!passClassification) return false;
+      if (!passOfferings) return false;
       if (!passRoleTrack) return false;
       if (!passStartWithin) return false;
       return true;
@@ -425,24 +492,24 @@ export default function Internships({ userRole }) {
                             checked={filters.workMode.includes(wm)}
                             onChange={() => toggleFilter('workMode', wm)}
                           />
-                          <span>{wm === 'onsite' ? 'På stedet' : wm === 'hybrid' ? 'Hybrid' : wm === 'remote' ? 'Hjemmefra' : wm}</span>
+                          <span>{WORK_MODE_MAP[wm] || wm}</span>
                         </label>
                       ))}
                     </div>
                   </div>
 
-                  {/* Classification */}
+                  {/* Offerings */}
                   <div className="filter-label">
-                    <span>Type praksis</span>
+                    <span>Bedriften tilbyr</span>
                     <div className="filter-multi-list">
-                      {filterOptions.classifications.map((c) => (
-                        <label key={c} className="filter-check">
+                      {filterOptions.offerings.map((o) => (
+                        <label key={o} className="filter-check">
                           <input
                             type="checkbox"
-                            checked={filters.classification.includes(c)}
-                            onChange={() => toggleFilter('classification', c)}
+                            checked={filters.offerings.includes(o)}
+                            onChange={() => toggleFilter('offerings', o)}
                           />
-                          <span>{c}</span>
+                          <span>{OFFERING_LABELS[o] || o}</span>
                         </label>
                       ))}
                     </div>
@@ -498,10 +565,10 @@ export default function Internships({ userRole }) {
                   <span key={`loc-${value}`} className="filter-chip">📍 {value} <button onClick={() => removeFilterValue('location', value)} aria-label="Fjern sted-filter">×</button></span>
                 ))}
                 {filters.workMode.map((value) => (
-                  <span key={`wm-${value}`} className="filter-chip">🏢 {value === 'onsite' ? 'På stedet' : value === 'hybrid' ? 'Hybrid' : 'Hjemmefra'} <button onClick={() => removeFilterValue('workMode', value)} aria-label="Fjern arbeidsform-filter">×</button></span>
+                  <span key={`wm-${value}`} className="filter-chip">🏢 {WORK_MODE_MAP[value] || value} <button onClick={() => removeFilterValue('workMode', value)} aria-label="Fjern arbeidsform-filter">×</button></span>
                 ))}
-                {filters.classification.map((value) => (
-                  <span key={`cl-${value}`} className="filter-chip">🎓 {value} <button onClick={() => removeFilterValue('classification', value)} aria-label="Fjern type-filter">×</button></span>
+                {filters.offerings.map((value) => (
+                  <span key={`off-${value}`} className="filter-chip">🎁 {OFFERING_LABELS[value] || value} <button onClick={() => removeFilterValue('offerings', value)} aria-label="Fjern tilbud-filter">×</button></span>
                 ))}
                 {filters.roleTrack.map((value) => (
                   <span key={`rt-${value}`} className="filter-chip">💻 {value === 'frontend' ? 'Frontend' : value === 'ux' ? 'UX / Design' : value === 'data' ? 'Data / Analyse' : value === 'fullstack' ? 'Full Stack' : value === 'backend' ? 'Backend' : value} <button onClick={() => removeFilterValue('roleTrack', value)} aria-label="Fjern fagretning-filter">×</button></span>
@@ -522,6 +589,7 @@ export default function Internships({ userRole }) {
                   const matchSummary = isStudent
                     ? scoreCaseAgainstStudent(mapInternshipToCaseLike(internship), studentProfile)
                     : null;
+                  const offeringLabels = getOfferingLabels(internship.offerings, internship.offeringOther);
 
                   if (internship.title?.includes('Full Stack') || internship.title?.includes('Fullstack')) {
                     console.log('Full Stack internship match calculation:', {
@@ -568,7 +636,7 @@ export default function Internships({ userRole }) {
                         {internship.companyId ? (
                           <Link
                             className="company-profile-link"
-                            to={`/companies/${internship.companyId}`}
+                            to={`/companies/${internship.companyId}?fromCase=${internship.id}`}
                             onClick={(event) => event.stopPropagation()}
                             onKeyDown={(event) => event.stopPropagation()}
                           >
@@ -578,6 +646,11 @@ export default function Internships({ userRole }) {
                       </p>
                       <p className="location">📍 {internship.location}</p>
                       <p>{internship.description}</p>
+                      {offeringLabels.length > 0 ? (
+                        <p className="internship-meta">
+                          <strong>Tilbyr:</strong> {offeringLabels.join(' • ')}
+                        </p>
+                      ) : null}
                       <p className="internship-meta">
                         <strong>Periode:</strong> {internship.startDate} til {internship.endDate}
                       </p>

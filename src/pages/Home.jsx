@@ -6,6 +6,7 @@ import InternshipDetailsModal from '../components/InternshipDetailsModal';
 import { defaultStudentProfile } from '../data/portalData';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { studentProfile as studentProfileAPI, cases as casesAPI } from '../utils/api';
+import { getOfferingLabels } from '../utils/offerings';
 
 function mapPublishedCaseToInternship(item) {
   const toStringArray = (val) =>
@@ -49,6 +50,8 @@ function mapPublishedCaseToInternship(item) {
     workAreas: item.workAreas || [],
     industry: item.industry || '',
     companySize: item.companySize || '',
+    offerings: Array.isArray(item.offerings) ? item.offerings : [],
+    offeringOther: item.offeringOther || '',
   };
 }
 
@@ -246,6 +249,7 @@ export default function Home({ userRole, setUserRole }) {
               const matchSummary = isStudent
                 ? scoreCaseAgainstStudent(mapInternshipToCaseLike(internship), studentProfile)
                 : null;
+              const offeringLabels = getOfferingLabels(internship.offerings, internship.offeringOther);
 
               return (
                 <div
@@ -283,7 +287,7 @@ export default function Home({ userRole, setUserRole }) {
                     {internship.companyId ? (
                       <Link
                         className="company-profile-link"
-                        to={`/companies/${internship.companyId}`}
+                        to={`/companies/${internship.companyId}?fromCase=${internship.id}`}
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >
@@ -293,6 +297,11 @@ export default function Home({ userRole, setUserRole }) {
                   </p>
                   <p className="location">📍 {internship.location}</p>
                   <p>{internship.description}</p>
+                  {offeringLabels.length > 0 ? (
+                    <p className="internship-meta">
+                      <strong>Tilbyr:</strong> {offeringLabels.join(' • ')}
+                    </p>
+                  ) : null}
                   <p className="internship-meta">
                     <strong>Periode:</strong> {internship.startDate} til {internship.endDate}
                   </p>

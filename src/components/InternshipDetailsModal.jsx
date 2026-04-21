@@ -122,7 +122,7 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
         <p className="modal-company">
           🏢{' '}
           {internship.companyId ? (
-            <Link to={`/companies/${internship.companyId}`} onClick={onClose}>
+            <Link to={`/companies/${internship.companyId}?fromCase=${internship.id}`} onClick={onClose}>
               {internship.company}
             </Link>
           ) : internship.company}
@@ -221,7 +221,7 @@ export default function InternshipDetailsModal({ internship, onClose, userRole }
               <p>
                 <strong>Navn:</strong>{' '}
                 {internship.companyId ? (
-                  <Link to={`/companies/${internship.companyId}`} onClick={onClose} className="company-profile-link">
+                  <Link to={`/companies/${internship.companyId}?fromCase=${internship.id}`} onClick={onClose} className="company-profile-link">
                     {internship.companyName || internship.company}
                   </Link>
                 ) : (internship.companyName || internship.company)}

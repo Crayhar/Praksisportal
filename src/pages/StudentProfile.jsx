@@ -6,6 +6,7 @@ import Footer from '../components/Footer';
 import { scoreCaseAgainstStudent } from '../utils/caseMatching';
 import { studentProfile, companyProfile, cases as casesAPI } from '../utils/api';
 import { exportStudentProfileToPdf } from '../utils/pdfExport';
+import { getOfferingLabels } from '../utils/offerings';
 
 function getLinkDomain(url) {
   try {
@@ -222,6 +223,8 @@ function mapPublishedCaseToInternship(item) {
     startWithin: item.startWithin || '',
     roleTrack: item.roleTrack || '',
     workMode: item.workMode || '',
+    offerings: Array.isArray(item.offerings) ? item.offerings : [],
+    offeringOther: item.offeringOther || '',
   };
 }
 
@@ -1219,6 +1222,10 @@ export default function StudentProfile({ userRole }) {
             ) : (
               <div className="internship-list">
                 {notifications.map((notice) => (
+                  (() => {
+                    const offeringLabels = getOfferingLabels(notice.offerings, notice.offeringOther);
+
+                    return (
                   <div
                     key={notice.id}
                     className="internship-card internship-card-clickable"
@@ -1254,7 +1261,7 @@ export default function StudentProfile({ userRole }) {
                       {notice.companyId ? (
                         <Link
                           className="company-profile-link"
-                          to={`/companies/${notice.companyId}`}
+                          to={`/companies/${notice.companyId}?fromCase=${notice.id}`}
                           onClick={(event) => event.stopPropagation()}
                           onKeyDown={(event) => event.stopPropagation()}
                         >
@@ -1264,6 +1271,11 @@ export default function StudentProfile({ userRole }) {
                     </p>
                     <p className="location">📍 {notice.location}</p>
                     <p>{notice.description}</p>
+                    {offeringLabels.length > 0 ? (
+                      <p className="internship-meta">
+                        <strong>Tilbyr:</strong> {offeringLabels.join(' • ')}
+                      </p>
+                    ) : null}
                     <p className="internship-meta">
                       <strong>Periode:</strong> {notice.startDate} til {notice.endDate}
                     </p>
@@ -1274,6 +1286,8 @@ export default function StudentProfile({ userRole }) {
                       Se mer info
                     </button>
                   </div>
+                    );
+                  })()
                 ))}
               </div>
             )}

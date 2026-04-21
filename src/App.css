@@ -19,7 +19,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Source Sans Pro", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
   color: var(--text-dark);
   background-color: var(--white);
@@ -903,6 +903,20 @@ input[type="checkbox"] {
 
 .company-public-error {
   color: #c53232;
+}
+
+.company-public-cases-section {
+  margin-bottom: 3rem;
+}
+
+.company-public-case-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.company-public-empty {
+  color: var(--text-light);
 }
 
 .edit-form {
