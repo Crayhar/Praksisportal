@@ -88,7 +88,7 @@ const EXAMPLE_DATA = {
   frontend: {
     title: 'Frontend-praksis for analyseplattform',
     taskDescription: 'Studenten skal utvikle interaktive dashbord-komponenter i React, integrere REST API og sørge for god ytelse og tilgjengelighet på tvers av enheter.',
-    companyQualifications: 'Vi er et tech-selskap med 15 ansatte som bygger dataanalyseløsninger for norske kommuner. Teamet jobber agilt med utviklere, designere og dataanalytikere.',
+    companyQualifications: 'Vi er et tech-selskap med 15 ansatte som bygger dataanalyseløsninger for norske kommuner. Teamet jobber agilt med utviklere, designere og dataanalytikere. (skriv egen versjon av dette basert på bedriftens deres informasjon)',
     requiredQualifications: 'React, JavaScript, HTML, CSS',
     preferredQualifications: 'TypeScript, REST API, Git, Figma',
     roleTracks: ['frontend'],
@@ -102,7 +102,7 @@ const EXAMPLE_DATA = {
   ux: {
     title: 'UX/UI-design for mobilapp',
     taskDescription: 'Studenten skal kartlegge brukerreiser, lage wireframes og prototyper i Figma, og gjennomføre brukertester med målgruppen for å validere designvalg.',
-    companyQualifications: 'Vi er en startup med 8 ansatte som utvikler en helseapp for unge voksne. Vi trenger en designer som bidrar med brukersentrert design og sterk estetisk sans.',
+    companyQualifications: 'Vi er en startup med 8 ansatte som utvikler en helseapp for unge voksne. Vi trenger en designer som bidrar med brukersentrert design og sterk estetisk sans. (skriv egen versjon av dette basert på bedriftens deres informasjon)',
     requiredQualifications: 'Figma, Prototyping, Brukertestring',
     preferredQualifications: 'Adobe XD, Illustrator, Animasjon, Tilgjengelighet',
     roleTracks: ['ux'],
@@ -116,7 +116,7 @@ const EXAMPLE_DATA = {
   data: {
     title: 'Dataanalyse og visualisering av salgsdata',
     taskDescription: 'Studenten skal analysere salgsdata fra siste tre år, bygge visualiseringer i Python og presentere innsikt og anbefalinger for ledelsen.',
-    companyQualifications: 'Vi er en e-handelsplattform med 30 ansatte. Vi ønsker hjelp til å forstå kundedata bedre og optimalisere salgsstrategier basert på datagrunnlag.',
+    companyQualifications: 'Vi er en e-handelsplattform med 30 ansatte. Vi ønsker hjelp til å forstå kundedata bedre og optimalisere salgsstrategier basert på datagrunnlag. (skriv egen versjon av dette basert på bedriftens deres informasjon)',
     requiredQualifications: 'Python, SQL, Pandas, Matplotlib',
     preferredQualifications: 'Tableau, Power BI, Machine Learning, scikit-learn',
     roleTracks: ['data'],
@@ -130,7 +130,7 @@ const EXAMPLE_DATA = {
   fullstack: {
     title: 'Fullstack-utvikling av intern administrasjonsportal',
     taskDescription: 'Studenten skal utvikle en intern portal med React frontend og Node.js backend, sette opp database og API, og dokumentere løsningen for videre drift.',
-    companyQualifications: 'Vi er et konsulentselskap med 50 ansatte som trenger bedre interne verktøy for å effektivisere arbeidsflyt og prosjektoppfølging.',
+    companyQualifications: 'Vi er et konsulentselskap med 50 ansatte som trenger bedre interne verktøy for å effektivisere arbeidsflyt og prosjektoppfølging. (skriv egen versjon av dette basert på bedriftens deres informasjon)',
     requiredQualifications: 'React, Node.js, SQL, REST API',
     preferredQualifications: 'TypeScript, Docker, Git, CI/CD',
     roleTracks: ['fullstack'],
@@ -144,7 +144,7 @@ const EXAMPLE_DATA = {
   backend: {
     title: 'Backend-utvikling og API-design',
     taskDescription: 'Studenten skal designe og implementere RESTful APIer, optimalisere databasespørringer og bidra til automatisert testing og CI/CD pipeline.',
-    companyQualifications: 'Vi er et fintech-selskap med 20 ansatte som bygger betalingsløsninger. Vi trenger hjelp til å skalere vår backend og forbedre API-dokumentasjonen.',
+    companyQualifications: 'Vi er et fintech-selskap med 20 ansatte som bygger betalingsløsninger. Vi trenger hjelp til å skalere vår backend og forbedre API-dokumentasjonen. (skriv egen versjon av dette basert på bedriftens deres informasjon)',
     requiredQualifications: 'Node.js, SQL, REST API, Git',
     preferredQualifications: 'Docker, AWS, TypeScript, Kubernetes',
     roleTracks: ['backend'],
@@ -158,7 +158,7 @@ const EXAMPLE_DATA = {
   default: {
     title: 'Praksisstudent med fokus på digitale løsninger',
     taskDescription: 'Studenten skal bidra med utvikling, analyse eller design i et tverrfaglig team. Oppdraget tilpasses studentens profil og bedriftens aktuelle behov.',
-    companyQualifications: 'Vi er en mellomstor bedrift med 25 ansatte innen teknologi og digitale tjenester. Vi ønsker en student som bidrar med nye perspektiver og friske øyne.',
+    companyQualifications: 'Vi er en mellomstor bedrift med 25 ansatte innen teknologi og digitale tjenester. Vi ønsker en student som bidrar med nye perspektiver og friske øyne. (skriv egen versjon av dette basert på bedriftens deres informasjon)',
     requiredQualifications: 'Relevant fagbakgrunn, Læringsvilje, Initiativ',
     preferredQualifications: 'Prosjekterfaring, Teamarbeid, Kommunikasjon',
     roleTracks: ['unsure'],
