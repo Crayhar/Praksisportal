@@ -648,7 +648,9 @@ function validateForm(form) {
 
 async function generateAdWithAi(form, classification, requirementAnalysis, companyProfile, mode = 'initial', onMetadataReady, onMarkdownChunk) {
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const ollamaHost = import.meta.env.VITE_OLLAMA_HOST || 'http://localhost:11434';
+  // In production VITE_OLLAMA_HOST may not be set — fall back to the backend API URL
+  // (the backend proxies /api/generate and /api/chat to the local Ollama instance)
+  const ollamaHost = import.meta.env.VITE_OLLAMA_HOST || import.meta.env.VITE_API_URL || 'http://localhost:11434';
   const aiProvider = import.meta.env.VITE_AI_PROVIDER || 'gemini';
 
   const createLLM = () => aiProvider === 'ollama'
@@ -1163,7 +1165,7 @@ export default function Chatbot({ userRole }) {
       persistGeneratedDraft(
         generatedAd,
         buildStructuredFallback(preparedForm, classification, requirementAnalysis, generatedAd),
-        'AI-oppsettet var ikke tilgjengelig. Et lokalt førsteutkast ble generert i stedet.'
+        `AI-oppsettet var ikke tilgjengelig (${error?.message || 'ukjent feil'}). Et lokalt førsteutkast ble generert i stedet.`
       );
     } finally {
       setLoading(false);
@@ -1193,6 +1195,7 @@ export default function Chatbot({ userRole }) {
       );
     } catch (error) {
       console.error('Failed to revise case draft', error);
+      setStatusMessage(`AI-revisjon feilet (${error?.message || 'ukjent feil'}). Revisjonsinstruksjonen er lagt ved utkastet lokalt.`);
       const generatedAd = `${form.generatedAd}\n\n### Oppdatert revisjonsnotat\n${form.revisionInstruction}`;
       persistGeneratedDraft(
         generatedAd,
