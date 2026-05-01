@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useContext } from 'react';
+import Spinner from '../components/Spinner';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
 import LLM from '@themaximalist/llm.js';
@@ -1287,7 +1288,7 @@ export default function Chatbot({ userRole }) {
     return (
       <main className="chatbot-locked-shell">
         <section className="profile-section">
-          <p style={{ textAlign: 'center', padding: '20px' }}>Laster...</p>
+          <Spinner />
         </section>
       </main>
     );

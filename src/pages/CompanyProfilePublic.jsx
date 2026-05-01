@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Footer from '../components/Footer';
+import Spinner from '../components/Spinner';
 import { companyProfile, cases as casesApi } from '../utils/api';
 import { getOfferingLabels } from '../utils/offerings';
 
@@ -55,7 +56,7 @@ export default function CompanyProfilePublic() {
     <main className="student-profile company-public-page">
       <div className="container">
         {loading ? (
-          <p className="company-public-state">Laster bedriftsprofil...</p>
+          <Spinner label="Laster bedriftsprofil..." />
         ) : error ? (
           <p className="company-public-state company-public-error">{error}</p>
         ) : !company ? (

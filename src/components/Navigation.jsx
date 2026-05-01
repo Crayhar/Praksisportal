@@ -96,16 +96,18 @@ export default function Navigation({ userRole, user, onLogout }) {
   const navItems = userRole === 'company'
     ? [homeItem, internshipsItem, applyItem, aiItem, profileItem]
     : userRole === 'student'
-      ? [homeItem, internshipsItem, applyItem, profileItem, aiItem]
+      ? [homeItem, internshipsItem, applyItem, profileItem]
       : [homeItem, internshipsItem];
 
   return (
-    <nav className="navbar">
+    <>
+      <a href="#main-content" className="skip-link">Hopp til hovedinnhold</a>
+      <nav className="navbar">
       <div className="nav-container">
         <div className="nav-logo">
           <Link to="/">Praksisportal</Link>
         </div>
-        <ul className={`nav-menu ${menuOpen ? 'active' : ''}`}>
+        <ul className={`nav-menu ${menuOpen ? 'active' : ''}`} id="nav-menu">
           {navItems.map((item) => (
             <li className="nav-item" key={item.to}>
               <Link
@@ -247,15 +249,19 @@ export default function Navigation({ userRole, user, onLogout }) {
             </>
           )}
         </ul>
-        <div
+        <button
           className={`hamburger ${menuOpen ? 'active' : ''}`}
           onClick={toggleMenu}
+          aria-expanded={menuOpen}
+          aria-controls="nav-menu"
+          aria-label="Åpne/lukk navigasjonsmeny"
         >
           <span></span>
           <span></span>
           <span></span>
-        </div>
+        </button>
       </div>
     </nav>
+    </>
   );
 }

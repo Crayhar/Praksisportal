@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useContext } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../App';
 import Footer from '../components/Footer';
+import Spinner from '../components/Spinner';
 import { internships } from '../data/internships';
 import {
   STORAGE_KEYS,
@@ -220,7 +221,7 @@ export default function Apply({ userRole }) {
         <section className="hero hero-apply">
           <div className="hero-content">
             <h1>Søk på praksisplass</h1>
-            <p>Laster søknadskjema...</p>
+            <Spinner label="Laster søknadskjema..." />
           </div>
         </section>
       </main>

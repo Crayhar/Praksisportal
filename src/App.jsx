@@ -1,14 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect, createContext } from 'react';
+import { useState, useEffect, createContext, lazy, Suspense } from 'react';
 import Navigation from './components/Navigation';
-import Home from './pages/Home';
-import Internships from './pages/Internships';
-import Apply from './pages/Apply';
-import Chatbot from './pages/Chatbot';
-import StudentProfile from './pages/StudentProfile';
-import CompanyProfilePublic from './pages/CompanyProfilePublic';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
+import Spinner from './components/Spinner';
+
+const Home = lazy(() => import('./pages/Home'));
+const Internships = lazy(() => import('./pages/Internships'));
+const Apply = lazy(() => import('./pages/Apply'));
+const Chatbot = lazy(() => import('./pages/Chatbot'));
+const StudentProfile = lazy(() => import('./pages/StudentProfile'));
+const CompanyProfilePublic = lazy(() => import('./pages/CompanyProfilePublic'));
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
 import { auth, token as tokenUtils } from './utils/api';
 import { NotificationProvider } from './contexts/NotificationContext';
 
@@ -59,7 +61,7 @@ function App() {
   };
 
   if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Laster...</div>;
+    return <Spinner />;
   }
 
   return (
@@ -67,6 +69,8 @@ function App() {
       <NotificationProvider>
         <Router>
           <Navigation userRole={userRole} user={user} onLogout={handleLogout} />
+          <main id="main-content">
+          <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/" element={<Home userRole={userRole} setUserRole={setUserRole} />} />
             <Route path="/login" element={userRole ? <Navigate to="/" /> : <Login />} />
@@ -84,6 +88,8 @@ function App() {
             />
             <Route path="/Chatbot_test" element={<ProtectedRoute element={<Chatbot userRole={userRole} />} role={userRole} />} />
           </Routes>
+          </Suspense>
+          </main>
         </Router>
       </NotificationProvider>
     </AuthContext.Provider>
