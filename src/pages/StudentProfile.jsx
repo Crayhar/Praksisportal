@@ -982,378 +982,378 @@ export default function StudentProfile({ userRole }) {
                       const preferencesPct = pct([editData.preferredLocations?.length > 0, editData.preferredRoleTracks?.length > 0, editData.preferredWorkModes?.length > 0]);
                       return (<>
 
-                    <AccordionSection title="Personlig info" completion={personalPct}>
-                      <div className="form-group">
-                        <label>
-                          Fornavn
-                          <FieldTooltip text="Ditt juridiske fornavn, slik det vises i offisielle dokumenter." />
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.firstName}
-                          onChange={(event) => updateStudentField('firstName', event.target.value)}
-                          onBlur={() => capitalizeStudentField('firstName')}
-                          placeholder="F.eks. Kari"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Etternavn
-                          <FieldTooltip text="Ditt juridiske etternavn." />
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.lastName}
-                          onChange={(event) => updateStudentField('lastName', event.target.value)}
-                          onBlur={() => capitalizeStudentField('lastName')}
-                          placeholder="F.eks. Nordmann"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Overskrift
-                          <FieldTooltip text="En kort setning som oppsummerer deg faglig. Dette er det første en bedrift ser på profilen din." />
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.headline}
-                          onChange={(event) => updateStudentField('headline', event.target.value)}
-                          onBlur={() => capitalizeStudentField('headline')}
-                          placeholder="F.eks. Informatikkstudent med interesse for webutvikling og UX"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Biografi
-                          <FieldTooltip text="Fortell hvem du er, hva du er interessert i og hva du ønsker å lære i praksis. 3–5 setninger er ideelt." />
-                        </label>
-                        <textarea
-                          rows="4"
-                          value={editData.bio}
-                          onChange={(event) => updateStudentField('bio', event.target.value)}
-                          placeholder="F.eks. Jeg er en engasjert student i mitt tredje år ved UiO, med særlig interesse for frontend-utvikling og brukeropplevelse. Jeg er strukturert, nysgjerrig og trives med å jobbe i team."
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          E-post
-                          <FieldTooltip text="E-postadressen bedrifter bruker for å kontakte deg. Bruk gjerne en privat e-post du sjekker regelmessig." />
-                        </label>
-                        <input
-                          type="email"
-                          value={editData.email}
-                          onChange={(event) => updateStudentField('email', event.target.value)}
-                          placeholder="F.eks. kari.nordmann@gmail.com"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Telefon
-                          <FieldTooltip text="Ditt mobilnummer. Skriv det med landskode om du er utenlandsk student, f.eks. +47 98 76 54 32." />
-                        </label>
-                        <input
-                          type="tel"
-                          value={editData.phone}
-                          onChange={(event) => updateStudentField('phone', event.target.value)}
-                          placeholder="F.eks. 98 76 54 32"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Lokasjon
-                          <FieldTooltip text="Byen eller stedet der du bor eller studerer. Brukes til å matche deg med praksisplasser i nærheten." />
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.location}
-                          onChange={(event) => updateStudentField('location', event.target.value)}
-                          onBlur={() => capitalizeStudentField('location')}
-                          placeholder="F.eks. Oslo"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="link-editor">
-                        <p className="tag-editor-label">
-                          <strong>Lenker</strong>
-                          <FieldTooltip text="Legg til lenker til LinkedIn, GitHub, portfolio o.l. Hjelper bedrifter å bli bedre kjent med deg." />
-                        </p>
-                        <div className="form-group">
-                          <label>Lenke 1</label>
-                          <input
-                            type="url"
-                            value={editData.link1 || ''}
-                            onChange={(event) => updateStudentField('link1', event.target.value)}
-                            placeholder="https://linkedin.com/in/ditt-navn"
-                            disabled={saving}
-                          />
-                        </div>
-                        {editData.link1?.trim() && (
+                        <AccordionSection title="Personlig info" completion={personalPct}>
                           <div className="form-group">
-                            <label>Lenke 2</label>
+                            <label>
+                              Fornavn
+                              <FieldTooltip text="Ditt juridiske fornavn, slik det vises i offisielle dokumenter." />
+                            </label>
                             <input
-                              type="url"
-                              value={editData.link2 || ''}
-                              onChange={(event) => updateStudentField('link2', event.target.value)}
-                              placeholder="https://github.com/ditt-brukernavn"
+                              type="text"
+                              value={editData.firstName}
+                              onChange={(event) => updateStudentField('firstName', event.target.value)}
+                              onBlur={() => capitalizeStudentField('firstName')}
+                              placeholder="F.eks. Kari"
                               disabled={saving}
                             />
                           </div>
-                        )}
-                        {editData.link1?.trim() && editData.link2?.trim() && (
                           <div className="form-group">
-                            <label>Lenke 3</label>
+                            <label>
+                              Etternavn
+                              <FieldTooltip text="Ditt juridiske etternavn." />
+                            </label>
                             <input
-                              type="url"
-                              value={editData.link3 || ''}
-                              onChange={(event) => updateStudentField('link3', event.target.value)}
-                              placeholder="https://portfolio.ditt-navn.no"
+                              type="text"
+                              value={editData.lastName}
+                              onChange={(event) => updateStudentField('lastName', event.target.value)}
+                              onBlur={() => capitalizeStudentField('lastName')}
+                              placeholder="F.eks. Nordmann"
                               disabled={saving}
                             />
                           </div>
-                        )}
-                      </div>
-                    </AccordionSection>
-
-                    <AccordionSection title="Utdanning" completion={educationPct}>
-                      <div className="form-group">
-                        <label>
-                          Universitet / skole
-                          <FieldTooltip text="Navnet på høyskolen eller universitetet der du studerer, f.eks. 'Universitetet i Oslo' eller 'OsloMet'." />
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.school || ''}
-                          onChange={(event) => updateStudentField('school', event.target.value)}
-                          onBlur={() => capitalizeStudentField('school')}
-                          placeholder="F.eks. Universitetet i Oslo"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Studieretning / fagfelt
-                          <FieldTooltip text="Hva studerer du? Skriv inn studieretningen din, f.eks. 'Informatikk', 'Markedsføring' eller 'Industridesign'." />
-                        </label>
-                        <input
-                          type="text"
-                          value={editData.field || ''}
-                          onChange={(event) => updateStudentField('field', event.target.value)}
-                          onBlur={() => capitalizeStudentField('field')}
-                          placeholder="F.eks. Informatikk eller Interaksjonsdesign"
-                          disabled={saving}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Gradsnivå
-                          <FieldTooltip text="Velg typen grad du tar. Hjelper bedrifter å forstå nivået på utdanningen din." />
-                        </label>
-                        <select
-                          className="form-select"
-                          value={editData.degreeLevel || ''}
-                          onChange={(event) => updateStudentField('degreeLevel', event.target.value)}
-                          disabled={saving}
-                        >
-                          <option value="">Velg gradsnivå</option>
-                          <option value="Fagskole">Fagskole</option>
-                          <option value="Bachelor">Bachelor</option>
-                          <option value="Master">Master</option>
-                          <option value="Ph.d">Ph.d</option>
-                          <option value="Profesjonsstudium">Profesjonsstudium</option>
-                          <option value="Utveksling">Utveksling</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label>
-                          Ferdigstillingsår
-                          <FieldTooltip text="Året du forventer å fullføre graden din. Brukes til å vise bedrifter når du er tilgjengelig for fast jobb." />
-                        </label>
-                        <input
-                          type="number"
-                          value={editData.graduationYear || ''}
-                          onChange={(event) => updateStudentField('graduationYear', Number(event.target.value) || null)}
-                          placeholder="F.eks. 2026"
-                          min="2024"
-                          max="2035"
-                          disabled={saving}
-                        />
-                      </div>
-                    </AccordionSection>
-
-                    <AccordionSection title="Ferdigheter og interesser" completion={skillsPct}>
-                      <SkillEditor
-                        skills={editData.skills}
-                        onAdd={addSkill}
-                        onRemove={removeSkill}
-                        onLevelChange={updateSkillLevel}
-                        loading={saving}
-                      />
-                      <TagEditor
-                        label="Faglige interesser"
-                        tooltip="Fagområder du er interessert i å jobbe med. Brukes i matchmaking for å finne relevante praksisplasser."
-                        items={editData.professionalInterests}
-                        onAdd={(value) => addTag('professionalInterests', value)}
-                        onRemove={(value) => removeTag('professionalInterests', value)}
-                        placeholder="F.eks. Webutvikling eller Maskinlæring"
-                        loading={saving}
-                        suggestions={INTEREST_SUGGESTIONS}
-                      />
-                      <TagEditor
-                        label="Personlige egenskaper"
-                        tooltip="Egenskaper som beskriver deg som person og kollega. Hjelper bedrifter å vurdere om du passer inn i teamet deres."
-                        items={editData.personalCharacteristics}
-                        onAdd={(value) => addTag('personalCharacteristics', value)}
-                        onRemove={(value) => removeTag('personalCharacteristics', value)}
-                        placeholder="F.eks. Strukturert eller Løsningsorientert"
-                        loading={saving}
-                        suggestions={CHARACTERISTIC_SUGGESTIONS}
-                      />
-                      <TagEditor
-                        label="Pågående fag"
-                        tooltip="Fag du tar dette semesteret. Kan være direkte relevante for praksisplassen du søker på."
-                        items={editData.currentSubjects}
-                        onAdd={(value) => addTag('currentSubjects', value)}
-                        onRemove={(value) => removeTag('currentSubjects', value)}
-                        placeholder="F.eks. Webutvikling eller Algoritmer"
-                        loading={saving}
-                        suggestions={SUBJECT_SUGGESTIONS}
-                      />
-                      <TagEditor
-                        label="Fullførte fag"
-                        tooltip="Fag du allerede har bestått. Gir bedriften et bilde av din faglige bakgrunn og kompetanse."
-                        items={editData.completedSubjects}
-                        onAdd={(value) => addTag('completedSubjects', value)}
-                        onRemove={(value) => removeTag('completedSubjects', value)}
-                        placeholder="F.eks. Databaser eller Statistikk"
-                        loading={saving}
-                        suggestions={SUBJECT_SUGGESTIONS}
-                      />
-                    </AccordionSection>
-
-                    <AccordionSection title="Preferanser" completion={preferencesPct}>
-                      <TagEditor
-                        label="Foretrukne steder"
-                        tooltip="Byer eller regioner der du ønsker å ha praksis. Brukes i matchmaking for å filtrere praksisplasser etter lokasjon."
-                        items={editData.preferredLocations}
-                        onAdd={(value) => addTag('preferredLocations', value)}
-                        onRemove={(value) => removeTag('preferredLocations', value)}
-                        placeholder="F.eks. Oslo eller Bergen"
-                        loading={saving}
-                        suggestions={['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Tromsø', 'Kristiansand', 'Remote']}
-                      />
-                      <div className="tag-editor">
-                        <p className="tag-editor-label">
-                          <strong>Foretrukne fagretninger</strong>
-                          <FieldTooltip text="Velg hvilke typer faglige oppdrag du er mest interessert i. Brukes direkte i matchmaking-algoritmen." />
-                        </p>
-                        <div className="filter-multi-list filter-multi-list-inline">
-                          {[
-                            { key: 'frontend', label: 'Frontend' },
-                            { key: 'ux', label: 'UX / Design' },
-                            { key: 'data', label: 'Data / Analyse' },
-                            { key: 'fullstack', label: 'Full Stack' },
-                            { key: 'backend', label: 'Backend' },
-                            { key: 'unsure', label: 'Generell / Usikker' },
-                          ].map(({ key, label }) => (
-                            <label key={key} className="filter-check">
+                          <div className="form-group">
+                            <label>
+                              Overskrift
+                              <FieldTooltip text="En kort setning som oppsummerer deg faglig. Dette er det første en bedrift ser på profilen din." />
+                            </label>
+                            <input
+                              type="text"
+                              value={editData.headline}
+                              onChange={(event) => updateStudentField('headline', event.target.value)}
+                              onBlur={() => capitalizeStudentField('headline')}
+                              placeholder="F.eks. Informatikkstudent med interesse for webutvikling og UX"
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              Biografi
+                              <FieldTooltip text="Fortell hvem du er, hva du er interessert i og hva du ønsker å lære i praksis. 3–5 setninger er ideelt." />
+                            </label>
+                            <textarea
+                              rows="4"
+                              value={editData.bio}
+                              onChange={(event) => updateStudentField('bio', event.target.value)}
+                              placeholder="F.eks. Jeg er en engasjert student i mitt tredje år ved UiO, med særlig interesse for frontend-utvikling og brukeropplevelse. Jeg er strukturert, nysgjerrig og trives med å jobbe i team."
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              E-post
+                              <FieldTooltip text="E-postadressen bedrifter bruker for å kontakte deg. Bruk gjerne en privat e-post du sjekker regelmessig." />
+                            </label>
+                            <input
+                              type="email"
+                              value={editData.email}
+                              onChange={(event) => updateStudentField('email', event.target.value)}
+                              placeholder="F.eks. kari.nordmann@gmail.com"
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              Telefon
+                              <FieldTooltip text="Ditt mobilnummer. Skriv det med landskode om du er utenlandsk student, f.eks. +47 98 76 54 32." />
+                            </label>
+                            <input
+                              type="tel"
+                              value={editData.phone}
+                              onChange={(event) => updateStudentField('phone', event.target.value)}
+                              placeholder="F.eks. 98 76 54 32"
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              Lokasjon
+                              <FieldTooltip text="Byen eller stedet der du bor eller studerer. Brukes til å matche deg med praksisplasser i nærheten." />
+                            </label>
+                            <input
+                              type="text"
+                              value={editData.location}
+                              onChange={(event) => updateStudentField('location', event.target.value)}
+                              onBlur={() => capitalizeStudentField('location')}
+                              placeholder="F.eks. Oslo"
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="link-editor">
+                            <p className="tag-editor-label">
+                              <strong>Lenker</strong>
+                              <FieldTooltip text="Legg til lenker til LinkedIn, GitHub, portfolio o.l. Hjelper bedrifter å bli bedre kjent med deg." />
+                            </p>
+                            <div className="form-group">
+                              <label>Lenke 1</label>
                               <input
-                                type="checkbox"
-                                checked={(editData.preferredRoleTracks || []).includes(key)}
-                                onChange={() => {
-                                  const current = editData.preferredRoleTracks || [];
-                                  updateStudentField('preferredRoleTracks',
-                                    current.includes(key) ? current.filter(v => v !== key) : [...current, key]
-                                  );
-                                }}
+                                type="url"
+                                value={editData.link1 || ''}
+                                onChange={(event) => updateStudentField('link1', event.target.value)}
+                                placeholder="https://linkedin.com/in/ditt-navn"
                                 disabled={saving}
                               />
-                              <span>{label}</span>
+                            </div>
+                            {editData.link1?.trim() && (
+                              <div className="form-group">
+                                <label>Lenke 2</label>
+                                <input
+                                  type="url"
+                                  value={editData.link2 || ''}
+                                  onChange={(event) => updateStudentField('link2', event.target.value)}
+                                  placeholder="https://github.com/ditt-brukernavn"
+                                  disabled={saving}
+                                />
+                              </div>
+                            )}
+                            {editData.link1?.trim() && editData.link2?.trim() && (
+                              <div className="form-group">
+                                <label>Lenke 3</label>
+                                <input
+                                  type="url"
+                                  value={editData.link3 || ''}
+                                  onChange={(event) => updateStudentField('link3', event.target.value)}
+                                  placeholder="https://portfolio.ditt-navn.no"
+                                  disabled={saving}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </AccordionSection>
+
+                        <AccordionSection title="Utdanning" completion={educationPct}>
+                          <div className="form-group">
+                            <label>
+                              Universitet / skole
+                              <FieldTooltip text="Navnet på høyskolen eller universitetet der du studerer, f.eks. 'Universitetet i Oslo' eller 'OsloMet'." />
                             </label>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="tag-editor">
-                        <p className="tag-editor-label">
-                          <strong>Foretrukket arbeidsform</strong>
-                          <FieldTooltip text="Hvordan ønsker du å jobbe? 'På stedet' = fysisk på kontoret, 'Hybrid' = kombinasjon, 'Remote' = hjemmefra." />
-                        </p>
-                        <div className="filter-multi-list filter-multi-list-inline">
-                          {[
-                            { key: 'onsite', label: 'På stedet' },
-                            { key: 'hybrid', label: 'Hybrid' },
-                            { key: 'remote', label: 'Hjemmefra / Remote' },
-                          ].map(({ key, label }) => (
-                            <label key={key} className="filter-check">
+                            <input
+                              type="text"
+                              value={editData.school || ''}
+                              onChange={(event) => updateStudentField('school', event.target.value)}
+                              onBlur={() => capitalizeStudentField('school')}
+                              placeholder="F.eks. Universitetet i Oslo"
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              Studieretning / fagfelt
+                              <FieldTooltip text="Hva studerer du? Skriv inn studieretningen din, f.eks. 'Informatikk', 'Markedsføring' eller 'Industridesign'." />
+                            </label>
+                            <input
+                              type="text"
+                              value={editData.field || ''}
+                              onChange={(event) => updateStudentField('field', event.target.value)}
+                              onBlur={() => capitalizeStudentField('field')}
+                              placeholder="F.eks. Informatikk eller Interaksjonsdesign"
+                              disabled={saving}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              Gradsnivå
+                              <FieldTooltip text="Velg typen grad du tar. Hjelper bedrifter å forstå nivået på utdanningen din." />
+                            </label>
+                            <select
+                              className="form-select"
+                              value={editData.degreeLevel || ''}
+                              onChange={(event) => updateStudentField('degreeLevel', event.target.value)}
+                              disabled={saving}
+                            >
+                              <option value="">Velg gradsnivå</option>
+                              <option value="Fagskole">Fagskole</option>
+                              <option value="Bachelor">Bachelor</option>
+                              <option value="Master">Master</option>
+                              <option value="Ph.d">Ph.d</option>
+                              <option value="Profesjonsstudium">Profesjonsstudium</option>
+                              <option value="Utveksling">Utveksling</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              Ferdigstillingsår
+                              <FieldTooltip text="Året du forventer å fullføre graden din. Brukes til å vise bedrifter når du er tilgjengelig for fast jobb." />
+                            </label>
+                            <input
+                              type="number"
+                              value={editData.graduationYear || ''}
+                              onChange={(event) => updateStudentField('graduationYear', Number(event.target.value) || null)}
+                              placeholder="F.eks. 2026"
+                              min="2024"
+                              max="2035"
+                              disabled={saving}
+                            />
+                          </div>
+                        </AccordionSection>
+
+                        <AccordionSection title="Ferdigheter og interesser" completion={skillsPct}>
+                          <SkillEditor
+                            skills={editData.skills}
+                            onAdd={addSkill}
+                            onRemove={removeSkill}
+                            onLevelChange={updateSkillLevel}
+                            loading={saving}
+                          />
+                          <TagEditor
+                            label="Faglige interesser"
+                            tooltip="Fagområder du er interessert i å jobbe med. Brukes i matchmaking for å finne relevante praksisplasser."
+                            items={editData.professionalInterests}
+                            onAdd={(value) => addTag('professionalInterests', value)}
+                            onRemove={(value) => removeTag('professionalInterests', value)}
+                            placeholder="F.eks. Webutvikling eller Maskinlæring"
+                            loading={saving}
+                            suggestions={INTEREST_SUGGESTIONS}
+                          />
+                          <TagEditor
+                            label="Personlige egenskaper"
+                            tooltip="Egenskaper som beskriver deg som person og kollega. Hjelper bedrifter å vurdere om du passer inn i teamet deres."
+                            items={editData.personalCharacteristics}
+                            onAdd={(value) => addTag('personalCharacteristics', value)}
+                            onRemove={(value) => removeTag('personalCharacteristics', value)}
+                            placeholder="F.eks. Strukturert eller Løsningsorientert"
+                            loading={saving}
+                            suggestions={CHARACTERISTIC_SUGGESTIONS}
+                          />
+                          <TagEditor
+                            label="Pågående fag"
+                            tooltip="Fag du tar dette semesteret. Kan være direkte relevante for praksisplassen du søker på."
+                            items={editData.currentSubjects}
+                            onAdd={(value) => addTag('currentSubjects', value)}
+                            onRemove={(value) => removeTag('currentSubjects', value)}
+                            placeholder="F.eks. Webutvikling eller Algoritmer"
+                            loading={saving}
+                            suggestions={SUBJECT_SUGGESTIONS}
+                          />
+                          <TagEditor
+                            label="Fullførte fag"
+                            tooltip="Fag du allerede har bestått. Gir bedriften et bilde av din faglige bakgrunn og kompetanse."
+                            items={editData.completedSubjects}
+                            onAdd={(value) => addTag('completedSubjects', value)}
+                            onRemove={(value) => removeTag('completedSubjects', value)}
+                            placeholder="F.eks. Databaser eller Statistikk"
+                            loading={saving}
+                            suggestions={SUBJECT_SUGGESTIONS}
+                          />
+                        </AccordionSection>
+
+                        <AccordionSection title="Preferanser" completion={preferencesPct}>
+                          <TagEditor
+                            label="Foretrukne steder"
+                            tooltip="Byer eller regioner der du ønsker å ha praksis. Brukes i matchmaking for å filtrere praksisplasser etter lokasjon."
+                            items={editData.preferredLocations}
+                            onAdd={(value) => addTag('preferredLocations', value)}
+                            onRemove={(value) => removeTag('preferredLocations', value)}
+                            placeholder="F.eks. Oslo eller Bergen"
+                            loading={saving}
+                            suggestions={['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Tromsø', 'Kristiansand', 'Remote']}
+                          />
+                          <div className="tag-editor">
+                            <p className="tag-editor-label">
+                              <strong>Foretrukne fagretninger</strong>
+                              <FieldTooltip text="Velg hvilke typer faglige oppdrag du er mest interessert i. Brukes direkte i matchmaking-algoritmen." />
+                            </p>
+                            <div className="filter-multi-list filter-multi-list-inline">
+                              {[
+                                { key: 'frontend', label: 'Frontend' },
+                                { key: 'ux', label: 'UX / Design' },
+                                { key: 'data', label: 'Data / Analyse' },
+                                { key: 'fullstack', label: 'Full Stack' },
+                                { key: 'backend', label: 'Backend' },
+                                { key: 'unsure', label: 'Generell / Usikker' },
+                              ].map(({ key, label }) => (
+                                <label key={key} className="filter-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={(editData.preferredRoleTracks || []).includes(key)}
+                                    onChange={() => {
+                                      const current = editData.preferredRoleTracks || [];
+                                      updateStudentField('preferredRoleTracks',
+                                        current.includes(key) ? current.filter(v => v !== key) : [...current, key]
+                                      );
+                                    }}
+                                    disabled={saving}
+                                  />
+                                  <span>{label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="tag-editor">
+                            <p className="tag-editor-label">
+                              <strong>Foretrukket arbeidsform</strong>
+                              <FieldTooltip text="Hvordan ønsker du å jobbe? 'På stedet' = fysisk på kontoret, 'Hybrid' = kombinasjon, 'Remote' = hjemmefra." />
+                            </p>
+                            <div className="filter-multi-list filter-multi-list-inline">
+                              {[
+                                { key: 'onsite', label: 'På stedet' },
+                                { key: 'hybrid', label: 'Hybrid' },
+                                { key: 'remote', label: 'Hjemmefra / Remote' },
+                              ].map(({ key, label }) => (
+                                <label key={key} className="filter-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={(editData.preferredWorkModes || []).includes(key)}
+                                    onChange={() => {
+                                      const current = editData.preferredWorkModes || [];
+                                      updateStudentField('preferredWorkModes',
+                                        current.includes(key) ? current.filter(v => v !== key) : [...current, key]
+                                      );
+                                    }}
+                                    disabled={saving}
+                                  />
+                                  <span>{label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </AccordionSection>
+
+                        <AccordionSection title="Varslingsinnstillinger" defaultOpen={false}>
+                          <div className="form-group">
+                            <label>
+                              Varselterskel: {editData.notificationThreshold}%
+                              <FieldTooltip text="Du varsles kun om praksisplasser der matchprosenten er lik eller høyere enn denne. Lavere = flere varsler, høyere = færre men mer relevante." />
+                            </label>
+                            <input
+                              type="range"
+                              className="threshold-slider"
+                              min="0"
+                              max="100"
+                              value={editData.notificationThreshold}
+                              onChange={(event) => updateStudentField('notificationThreshold', Number(event.target.value))}
+                              disabled={saving}
+                            />
+                            <div className="threshold-labels">
+                              <span>0%</span>
+                              <span>Varsle ved {editData.notificationThreshold}% match eller høyere</span>
+                              <span>100%</span>
+                            </div>
+                          </div>
+                          <div className="form-group notification-toggle-group">
+                            <label className="notification-toggle-label">
                               <input
                                 type="checkbox"
-                                checked={(editData.preferredWorkModes || []).includes(key)}
-                                onChange={() => {
-                                  const current = editData.preferredWorkModes || [];
-                                  updateStudentField('preferredWorkModes',
-                                    current.includes(key) ? current.filter(v => v !== key) : [...current, key]
-                                  );
-                                }}
+                                checked={Boolean(editData.inAppNotificationsEnabled)}
+                                onChange={(event) => updateStudentField('inAppNotificationsEnabled', event.target.checked)}
                                 disabled={saving}
                               />
-                              <span>{label}</span>
+                              <span>In-app varslinger</span>
+                              <small className="notification-toggle-hint"> Vis varsler inne i appen</small>
                             </label>
-                          ))}
-                        </div>
-                      </div>
-                    </AccordionSection>
-
-                    <AccordionSection title="Varslingsinnstillinger" defaultOpen={false}>
-                      <div className="form-group">
-                        <label>
-                          Varselterskel: {editData.notificationThreshold}%
-                          <FieldTooltip text="Du varsles kun om praksisplasser der matchprosenten er lik eller høyere enn denne. Lavere = flere varsler, høyere = færre men mer relevante." />
-                        </label>
-                        <input
-                          type="range"
-                          className="threshold-slider"
-                          min="0"
-                          max="100"
-                          value={editData.notificationThreshold}
-                          onChange={(event) => updateStudentField('notificationThreshold', Number(event.target.value))}
-                          disabled={saving}
-                        />
-                        <div className="threshold-labels">
-                          <span>0%</span>
-                          <span>Varsle ved {editData.notificationThreshold}% match eller høyere</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-                      <div className="form-group notification-toggle-group">
-                        <label className="notification-toggle-label">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(editData.inAppNotificationsEnabled)}
-                            onChange={(event) => updateStudentField('inAppNotificationsEnabled', event.target.checked)}
-                            disabled={saving}
-                          />
-                          <span>In-app varslinger</span>
-                          <small className="notification-toggle-hint">Vis varsler inne i appen</small>
-                        </label>
-                      </div>
-                      <div className="form-group notification-toggle-group">
-                        <label className="notification-toggle-label">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(editData.emailNotificationsEnabled)}
-                            onChange={(event) => updateStudentField('emailNotificationsEnabled', event.target.checked)}
-                            disabled={saving}
-                          />
-                          <span>E-postvarslinger</span>
-                          <small className="notification-toggle-hint">Motta varsler på e-postadressen din</small>
-                        </label>
-                      </div>
-                    </AccordionSection>
+                          </div>
+                          <div className="form-group notification-toggle-group">
+                            <label className="notification-toggle-label">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(editData.emailNotificationsEnabled)}
+                                onChange={(event) => updateStudentField('emailNotificationsEnabled', event.target.checked)}
+                                disabled={saving}
+                              />
+                              <span>E-postvarslinger</span>
+                              <small className="notification-toggle-hint"> Motta varsler på e-postadressen din</small>
+                            </label>
+                          </div>
+                        </AccordionSection>
                       </>);
                     })()}
                   </>
@@ -1457,66 +1457,66 @@ export default function StudentProfile({ userRole }) {
                     const offeringLabels = getOfferingLabels(notice.offerings, notice.offeringOther);
 
                     return (
-                  <div
-                    key={notice.id}
-                    className="internship-card internship-card-clickable"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openRecommendedAd(notice.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openRecommendedAd(notice.id);
-                      }
-                    }}
-                  >
-                    {notice.scoreSummary ? (
-                      <div className="match-summary">
-                        <div className="match-summary-copy">
-                          <p className="match-summary-kicker">Din match</p>
-                          <p className="match-summary-title">
-                            {notice.scoreSummary.rankedSkillMatches[0]?.name || notice.scoreSummary.topQualification}
-                          </p>
-                        </div>
-                        <div className="match-score match-score-md">
-                          <div className="match-score-inner">
-                            <strong className="match-score-value match-score-value-md">{notice.scoreSummary.totalScore}%</strong>
-                            <span className="match-score-caption">match</span>
+                      <div
+                        key={notice.id}
+                        className="internship-card internship-card-clickable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openRecommendedAd(notice.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openRecommendedAd(notice.id);
+                          }
+                        }}
+                      >
+                        {notice.scoreSummary ? (
+                          <div className="match-summary">
+                            <div className="match-summary-copy">
+                              <p className="match-summary-kicker">Din match</p>
+                              <p className="match-summary-title">
+                                {notice.scoreSummary.rankedSkillMatches[0]?.name || notice.scoreSummary.topQualification}
+                              </p>
+                            </div>
+                            <div className="match-score match-score-md">
+                              <div className="match-score-inner">
+                                <strong className="match-score-value match-score-value-md">{notice.scoreSummary.totalScore}%</strong>
+                                <span className="match-score-caption">match</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
+                        <h3>{notice.title}</h3>
+                        <p className="company">
+                          🏢{' '}
+                          {notice.companyId ? (
+                            <Link
+                              className="company-profile-link"
+                              to={`/companies/${notice.companyId}?fromCase=${notice.id}`}
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
+                              {notice.company}
+                            </Link>
+                          ) : notice.company}
+                        </p>
+                        <p className="location">📍 {notice.location}</p>
+                        <p>{notice.description}</p>
+                        {offeringLabels.length > 0 ? (
+                          <p className="internship-meta">
+                            <strong>Tilbyr:</strong> {offeringLabels.join(' • ')}
+                          </p>
+                        ) : null}
+                        <p className="internship-meta">
+                          <strong>Periode:</strong> {notice.startDate} til {notice.endDate}
+                        </p>
+                        <p className="internship-meta">
+                          <strong>Maks timer:</strong> {notice.maxHours}
+                        </p>
+                        <button type="button" className="btn btn-primary btn-inline-small">
+                          Se mer info
+                        </button>
                       </div>
-                    ) : null}
-                    <h3>{notice.title}</h3>
-                    <p className="company">
-                      🏢{' '}
-                      {notice.companyId ? (
-                        <Link
-                          className="company-profile-link"
-                          to={`/companies/${notice.companyId}?fromCase=${notice.id}`}
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                        >
-                          {notice.company}
-                        </Link>
-                      ) : notice.company}
-                    </p>
-                    <p className="location">📍 {notice.location}</p>
-                    <p>{notice.description}</p>
-                    {offeringLabels.length > 0 ? (
-                      <p className="internship-meta">
-                        <strong>Tilbyr:</strong> {offeringLabels.join(' • ')}
-                      </p>
-                    ) : null}
-                    <p className="internship-meta">
-                      <strong>Periode:</strong> {notice.startDate} til {notice.endDate}
-                    </p>
-                    <p className="internship-meta">
-                      <strong>Maks timer:</strong> {notice.maxHours}
-                    </p>
-                    <button type="button" className="btn btn-primary btn-inline-small">
-                      Se mer info
-                    </button>
-                  </div>
                     );
                   })()
                 ))}
