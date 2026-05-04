@@ -6,15 +6,15 @@ A web application for managing student internship placements, built as a bachelo
 
 ## Tech Stack
 
-| Layer          | Technology                   |
-| -------------- | ---------------------------- |
-| Frontend       | React 19, Vite, React Router |
-| Backend        | Node.js, Express             |
-| Database       | MySQL                        |
-| Auth           | JWT, bcryptjs                |
-| AI             | Gemini API (chatbot)         |
-| PDF generation | jsPDF                        |
-| Deployment     | Vercel (frontend)            |
+| Layer          | Technology                     |
+| -------------- | ------------------------------ |
+| Frontend       | React 19, Vite, React Router   |
+| Backend        | Node.js, Express               |
+| Database       | MySQL                          |
+| Auth           | JWT, bcryptjs                  |
+| AI             | Gemini API and Ollama(chatbot) |
+| PDF generation | jsPDF                          |
+| Deployment     | Vercel (frontend)              |
 
 ---
 

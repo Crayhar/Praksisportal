@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useContext } from 'react';
 import Spinner from '../components/Spinner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
 import LLM from '@themaximalist/llm.js';
 import ReactMarkdown from 'react-markdown';
@@ -734,6 +734,7 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
 
 export default function Chatbot({ userRole }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userRole: authRole } = useContext(AuthContext);
   const canManageCases = authRole === 'company' || authRole === 'admin';
   const isCompany = authRole === 'company';
@@ -797,6 +798,12 @@ export default function Chatbot({ userRole }) {
       setInitializing(false);
     }
   }, [canManageCases, isCompany]);
+
+  useEffect(() => {
+    if (!initializing && location.state?.caseToEdit) {
+      handleLoadPublishedCase(location.state.caseToEdit);
+    }
+  }, [initializing]);
 
   const preparedForm = useMemo(() => prepareCaseForm(form, companyProfile), [form, companyProfile]);
   const classification = useMemo(() => classifyCase(preparedForm), [preparedForm]);

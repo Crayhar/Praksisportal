@@ -785,6 +785,9 @@ export default function StudentProfile({ userRole }) {
                   </>
                 )}
                 <div className="profile-details">
+                  {isCompany && profileData.contactPerson ? (
+                    <span>👤 {profileData.contactPerson}</span>
+                  ) : null}
                   <span>
                     📧 {' '}
                     {profileData.email ? (
@@ -815,7 +818,37 @@ export default function StudentProfile({ userRole }) {
                       ? `📍 ${profileData.location || 'Ikke satt'}`
                       : `📍 ${profileData.location || 'Ikke satt'} • Varselterskel ${profileData.notificationThreshold}%`}
                   </span>
+                  {isCompany && profileData.website ? (
+                    <span>
+                      🌐{' '}
+                      <a href={normalizeUrl(profileData.website)} target="_blank" rel="noreferrer">
+                        {profileData.website}
+                      </a>
+                    </span>
+                  ) : null}
                 </div>
+                {isCompany && (
+                  <>
+                    {(profileData.companyQualifications || []).length > 0 && (
+                      <div className="chip-section">
+                        <p className="chip-section-label">Kjernekompetanse</p>
+                        <ChipList items={profileData.companyQualifications} />
+                      </div>
+                    )}
+                    {(profileData.workAreas || []).length > 0 && (
+                      <div className="chip-section">
+                        <p className="chip-section-label">Arbeidsområder</p>
+                        <ChipList items={profileData.workAreas} />
+                      </div>
+                    )}
+                    {(profileData.hiringFocus || []).length > 0 && (
+                      <div className="chip-section">
+                        <p className="chip-section-label">Hvem vi ser etter</p>
+                        <ChipList items={profileData.hiringFocus} />
+                      </div>
+                    )}
+                  </>
+                )}
                 {!isCompany ? (
                   <div className="notification-settings-summary">
                     <p className="notification-settings-summary-title">Varslingsinnstillinger</p>
@@ -883,92 +916,138 @@ export default function StudentProfile({ userRole }) {
               <div className="edit-form edit-form-accent">
                 {isCompany ? (
                   <>
-                    <div className="form-group">
-                      <label>Bedriftsnavn</label>
-                      <input
-                        type="text"
-                        value={companyEditData.name}
-                        onChange={(event) => updateCompanyField('name', event.target.value)}
-                        onBlur={() => capitalizeCompanyField('name')}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Kontaktperson</label>
-                      <input
-                        type="text"
-                        value={companyEditData.contactPerson || ''}
-                        onChange={(event) => updateCompanyField('contactPerson', event.target.value)}
-                        onBlur={() => capitalizeCompanyField('contactPerson')}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>E-post</label>
-                      <input
-                        type="email"
-                        value={companyEditData.email || ''}
-                        onChange={(event) => updateCompanyField('email', event.target.value)}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Telefon</label>
-                      <input
-                        type="tel"
-                        value={companyEditData.phone || ''}
-                        onChange={(event) => updateCompanyField('phone', event.target.value)}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Nettside</label>
-                      <input
-                        type="text"
-                        value={companyEditData.website || ''}
-                        onChange={(event) => updateCompanyField('website', event.target.value)}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Lokasjon</label>
-                      <input
-                        type="text"
-                        value={companyEditData.location || ''}
-                        onChange={(event) => updateCompanyField('location', event.target.value)}
-                        onBlur={() => capitalizeCompanyField('location')}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Bedriftsstørrelse</label>
-                      <input
-                        type="text"
-                        value={companyEditData.size || ''}
-                        onChange={(event) => updateCompanyField('size', event.target.value)}
-                        onBlur={() => capitalizeCompanyField('size')}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Bransje</label>
-                      <input
-                        type="text"
-                        value={companyEditData.industry || ''}
-                        onChange={(event) => updateCompanyField('industry', event.target.value)}
-                        onBlur={() => capitalizeCompanyField('industry')}
-                        disabled={saving}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Beskrivelse</label>
-                      <textarea
-                        rows="4"
-                        value={companyEditData.description || ''}
-                        onChange={(event) => updateCompanyField('description', event.target.value)}
-                        disabled={saving}
-                      />
-                    </div>
+                    {(() => {
+                      const infoPct = Math.round(
+                        [companyEditData.name, companyEditData.contactPerson, companyEditData.email, companyEditData.phone, companyEditData.website, companyEditData.location, companyEditData.size, companyEditData.industry, companyEditData.description]
+                          .filter(Boolean).length / 9 * 100
+                      );
+                      const competencePct = Math.round(
+                        [(companyEditData.companyQualifications || []).length > 0, (companyEditData.workAreas || []).length > 0, (companyEditData.hiringFocus || []).length > 0]
+                          .filter(Boolean).length / 3 * 100
+                      );
+                      return (
+                        <>
+                          <AccordionSection title="Bedriftsinformasjon" completion={infoPct}>
+                            <div className="form-group">
+                              <label>Bedriftsnavn</label>
+                              <input
+                                type="text"
+                                value={companyEditData.name}
+                                onChange={(event) => updateCompanyField('name', event.target.value)}
+                                onBlur={() => capitalizeCompanyField('name')}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Kontaktperson</label>
+                              <input
+                                type="text"
+                                value={companyEditData.contactPerson || ''}
+                                onChange={(event) => updateCompanyField('contactPerson', event.target.value)}
+                                onBlur={() => capitalizeCompanyField('contactPerson')}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>E-post</label>
+                              <input
+                                type="email"
+                                value={companyEditData.email || ''}
+                                onChange={(event) => updateCompanyField('email', event.target.value)}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Telefon</label>
+                              <input
+                                type="tel"
+                                value={companyEditData.phone || ''}
+                                onChange={(event) => updateCompanyField('phone', event.target.value)}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Nettside</label>
+                              <input
+                                type="text"
+                                value={companyEditData.website || ''}
+                                onChange={(event) => updateCompanyField('website', event.target.value)}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Lokasjon</label>
+                              <input
+                                type="text"
+                                value={companyEditData.location || ''}
+                                onChange={(event) => updateCompanyField('location', event.target.value)}
+                                onBlur={() => capitalizeCompanyField('location')}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Bedriftsstørrelse</label>
+                              <input
+                                type="text"
+                                value={companyEditData.size || ''}
+                                onChange={(event) => updateCompanyField('size', event.target.value)}
+                                onBlur={() => capitalizeCompanyField('size')}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Bransje</label>
+                              <input
+                                type="text"
+                                value={companyEditData.industry || ''}
+                                onChange={(event) => updateCompanyField('industry', event.target.value)}
+                                onBlur={() => capitalizeCompanyField('industry')}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Beskrivelse</label>
+                              <textarea
+                                rows="4"
+                                value={companyEditData.description || ''}
+                                onChange={(event) => updateCompanyField('description', event.target.value)}
+                                disabled={saving}
+                              />
+                            </div>
+                          </AccordionSection>
+
+                          <AccordionSection title="Kompetanse og fokus" completion={competencePct}>
+                            <TagEditor
+                              label="Kjernekompetanse"
+                              items={companyEditData.companyQualifications || []}
+                              onAdd={(value) => addTag('companyQualifications', value, true)}
+                              onRemove={(value) => removeTag('companyQualifications', value, true)}
+                              placeholder="F.eks. React, Prosjektledelse"
+                              loading={saving}
+                              suggestions={['React', 'TypeScript', 'Python', 'Node.js', 'Java', '.NET', 'SQL', 'Docker', 'AWS', 'Figma', 'UX-design', 'Prosjektledelse', 'Agile / Scrum', 'Machine Learning', 'Cybersikkerhet', 'Vue', 'Angular', 'Kubernetes', 'Data-analyse', 'DevOps']}
+                            />
+                            <TagEditor
+                              label="Arbeidsområder"
+                              items={companyEditData.workAreas || []}
+                              onAdd={(value) => addTag('workAreas', value, true)}
+                              onRemove={(value) => removeTag('workAreas', value, true)}
+                              placeholder="F.eks. Webutvikling, Data-analyse"
+                              loading={saving}
+                              suggestions={['Webutvikling', 'Mobilutvikling', 'Frontend-utvikling', 'Backend-utvikling', 'Full Stack', 'Data og analyse', 'Kunstig intelligens', 'Skyteknologi', 'Cybersikkerhet', 'UX og design', 'Produktutvikling', 'DevOps', 'Automatisering', 'IoT', 'Systemintegrasjon']}
+                            />
+                            <TagEditor
+                              label="Hvem dere ser etter"
+                              items={companyEditData.hiringFocus || []}
+                              onAdd={(value) => addTag('hiringFocus', value, true)}
+                              onRemove={(value) => removeTag('hiringFocus', value, true)}
+                              placeholder="F.eks. Bachelor i IT, Motiverte studenter"
+                              loading={saving}
+                              suggestions={['Bachelor i Informatikk', 'Bachelor i IT', 'Masterstudenter', 'UX-studenter', 'Datastudenter', 'Frontend-interesserte', 'Backend-interesserte', 'Motiverte studenter', 'Selvstendige studenter', 'Teamorienterte studenter', 'Studenter med interesse for AI', 'Utvekslingsstudenter']}
+                            />
+                          </AccordionSection>
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <>
@@ -1371,6 +1450,53 @@ export default function StudentProfile({ userRole }) {
             )}
           </div>
         </section>
+
+        {isCompany && (
+          <section className="profile-section company-public-cases-section">
+            <h2>Våres publiserte prosjekter</h2>
+            {(() => {
+              const myCases = publishedCases.filter(
+                (c) => String(c.companyId || c.company_id) === String(company?.id)
+              );
+              if (myCases.length === 0) {
+                return (
+                  <p className="company-public-empty">
+                    Du har ingen publiserte prosjekter ennå.{' '}
+                    <a href="/apply">Publiser et nytt prosjekt her.</a>
+                  </p>
+                );
+              }
+              return (
+                <div className="internship-list">
+                  {myCases.map((item) => (
+                    <article key={item.id} className="internship-card company-public-case-card">
+                      <h3>{item.generatedAdData?.title || item.title}</h3>
+                      <p className="location">📍 {item.location || 'Ikke oppgitt'}</p>
+                      <p>{item.generatedAdData?.summary || item.taskDescription || 'Ingen beskrivelse tilgjengelig.'}</p>
+                      <p className="internship-meta">
+                        <strong>Periode:</strong> {item.startDate || 'Ikke oppgitt'} til {item.endDate || 'Ikke oppgitt'}
+                      </p>
+                      <div className="profile-header-actions">
+                        <button
+                          className="btn btn-secondary btn-inline-small"
+                          onClick={() => navigate('/chatbot', { state: { caseToEdit: item } })}
+                        >
+                          Rediger
+                        </button>
+                        <a
+                          className="btn btn-primary btn-inline-small"
+                          href={`/internships?selected=${item.id}`}
+                        >
+                          Se annonse
+                        </a>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              );
+            })()}
+          </section>
+        )}
 
         {!isCompany && (
           <section className="notices notices-persistent">
