@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, createContext, lazy, Suspense } from 'react';
 import Navigation from './components/Navigation';
 import Spinner from './components/Spinner';
@@ -16,6 +16,12 @@ import { auth, token as tokenUtils } from './utils/api';
 import { NotificationProvider } from './contexts/NotificationContext';
 
 export const AuthContext = createContext(null);
+
+function ConditionalNav({ userRole, user, onLogout }) {
+  const location = useLocation();
+  if (location.pathname === '/register') return null;
+  return <Navigation userRole={userRole} user={user} onLogout={onLogout} />;
+}
 
 function ProtectedRoute({ element, role, requiredRole }) {
   if (!role) {
@@ -69,7 +75,7 @@ function App() {
     <AuthContext.Provider value={{ user, userRole, setUser, setUserRole, handleLogout }}>
       <NotificationProvider>
         <Router>
-          <Navigation userRole={userRole} user={user} onLogout={handleLogout} />
+          <ConditionalNav userRole={userRole} user={user} onLogout={handleLogout} />
           <main id="main-content">
           <Suspense fallback={<Spinner />}>
           <Routes>
