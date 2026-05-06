@@ -111,8 +111,8 @@ export async function sendWelcomeEmail({ to, firstName, companyName }) {
     <h2 style="color:#347e84;margin-top:0;">Velkommen til Praksisportal!</h2>
     <p style="color:#374151;">Hei ${firstName},</p>
     <p style="color:#374151;">
-      Tusen takk for at <strong>${companyName}</strong> meldte sin interesse i Praksisportal.
-      Vi setter stor pris på at dere tok dere tid til å registrere dere, og vi er glade for å ha dere med.
+      Takk – <strong>${companyName}</strong> er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid
+      som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.
     </p>
     <p style="color:#374151;">
       Vi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling.
@@ -127,7 +127,7 @@ export async function sendWelcomeEmail({ to, firstName, companyName }) {
     </p>
   </div>`;
 
-  const text = `Hei ${firstName},\n\nTusen takk for at ${companyName} meldte sin interesse i Praksisportal.\n\nVi setter stor pris på at dere tok dere tid til å registrere dere. Vi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling.\n\nMed vennlig hilsen,\nPraksisportal-teamet`;
+  const text = `Hei ${firstName},\n\nTakk – ${companyName} er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.\n\nVi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling. Hold øye med innboksen din – vi gleder oss til å ta kontakt!\n\nMed vennlig hilsen,\nPraksisportal-teamet`;
 
   try {
     await transport.sendMail({
