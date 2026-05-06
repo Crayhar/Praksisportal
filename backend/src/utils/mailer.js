@@ -18,10 +18,10 @@ function getSafeFromAddress() {
   // Gmail SMTP is strict about From alignment. Using SMTP_USER improves
   // acceptance on stricter receivers (e.g., university domains).
   if (isGmailSmtp() && smtpUser) {
-    return `"Praksisportal" <${smtpUser}>`;
+    return `"HiØ Næringsportalen" <${smtpUser}>`;
   }
 
-  return configuredFrom || `"Praksisportal" <no-reply@praksisportal.no>`;
+  return configuredFrom || `"HiØ Næringsportalen" <no-reply@næringsportalen.no>`;
 }
 
 function getTransporter() {
