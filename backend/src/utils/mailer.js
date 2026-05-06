@@ -114,10 +114,6 @@ export async function sendWelcomeEmail({ to, firstName, companyName }) {
       Takk – <strong>${companyName}</strong> er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid
       som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.
     </p>
-    <p style="color:#374151;">
-      Vi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling.
-      Hold øye med innboksen din – vi gleder oss til å ta kontakt!
-    </p>
     <p style="color:#374151;margin-top:32px;">
       Med vennlig hilsen,<br/>
       <strong>Næringsportalen-teamet</strong>
@@ -127,7 +123,7 @@ export async function sendWelcomeEmail({ to, firstName, companyName }) {
     </p>
   </div>`;
 
-  const text = `Hei ${firstName},\n\nTakk – ${companyName} er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.\n\nVi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling. Hold øye med innboksen din – vi gleder oss til å ta kontakt!\n\nMed vennlig hilsen,\nNæringsportalen-teamet`;
+  const text = `Hei ${firstName},\n\nTakk – ${companyName} er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.\n\nMed vennlig hilsen,\nNæringsportalen-teamet`;
 
   try {
     await transport.sendMail({
