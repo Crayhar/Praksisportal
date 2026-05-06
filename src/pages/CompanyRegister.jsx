@@ -117,7 +117,7 @@ export default function CompanyRegister() {
               style={{ width: "auto", margin: 0 }}
             />
             <label htmlFor="wantsContact" style={{ margin: 0, cursor: "pointer" }}>
-              Jeg ønsker å bli kontaktet når Praksisportal lanseres
+              Kontakt meg - jeg vil gjerne vite mer om et mulig samarbeide
             </label>
           </div>
 

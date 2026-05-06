@@ -108,7 +108,7 @@ export async function sendWelcomeEmail({ to, firstName, companyName }) {
 
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
-    <h2 style="color:#347e84;margin-top:0;">Velkommen til Praksisportal!</h2>
+    <h2 style="color:#347e84;margin-top:0;">Velkommen til Næringsportalen!</h2>
     <p style="color:#374151;">Hei ${firstName},</p>
     <p style="color:#374151;">
       Takk – <strong>${companyName}</strong> er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid
@@ -120,20 +120,20 @@ export async function sendWelcomeEmail({ to, firstName, companyName }) {
     </p>
     <p style="color:#374151;margin-top:32px;">
       Med vennlig hilsen,<br/>
-      <strong>Praksisportal-teamet</strong>
+      <strong>Næringsportalen-teamet</strong>
     </p>
     <p style="color:#9ca3af;font-size:0.8rem;margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;">
-      Du mottar denne e-posten fordi ${companyName} registrerte seg via Praksisportal.
+      Du mottar denne e-posten fordi ${companyName} registrerte seg via Næringsportalen.
     </p>
   </div>`;
 
-  const text = `Hei ${firstName},\n\nTakk – ${companyName} er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.\n\nVi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling. Hold øye med innboksen din – vi gleder oss til å ta kontakt!\n\nMed vennlig hilsen,\nPraksisportal-teamet`;
+  const text = `Hei ${firstName},\n\nTakk – ${companyName} er nå registrert i HiØ Næringsportalen. Det første steget i et mulig tettere samarbeid som skal sikre næringsrelevant innhold i utdanning og konkrete studentprosjekter/-praksisplasser.\n\nVi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling. Hold øye med innboksen din – vi gleder oss til å ta kontakt!\n\nMed vennlig hilsen,\nNæringsportalen-teamet`;
 
   try {
     await transport.sendMail({
       from,
       to,
-      subject: 'Velkommen til Praksisportal!',
+      subject: 'Velkommen til Næringsportalen!',
       text,
       html,
     });
