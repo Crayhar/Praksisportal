@@ -153,3 +153,6 @@ export const notifications = {
   markRead: (id) => apiFetch(`/api/notifications/${id}/read`, { method: "PUT" }),
   markAllRead: () => apiFetch("/api/notifications/read-all", { method: "PUT" }),
 };
+
+export const fetchWebsite = (url) =>
+  apiFetch("/api/fetch-website", { method: "POST", body: JSON.stringify({ url }) });

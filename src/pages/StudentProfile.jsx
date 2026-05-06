@@ -1460,10 +1460,12 @@ export default function StudentProfile({ userRole }) {
               );
               if (myCases.length === 0) {
                 return (
-                  <p className="company-public-empty">
-                    Du har ingen publiserte prosjekter ennå.{' '}
-                    <a href="/apply">Publiser et nytt prosjekt her.</a>
-                  </p>
+                  <div className="company-public-empty">
+                    <p>Du har ingen publiserte prosjekter ennå.</p>
+                    <a href="/chatbot" className="btn btn-primary" style={{ display: 'inline-block', marginTop: '12px' }}>
+                      Publiser et nytt prosjekt
+                    </a>
+                  </div>
                 );
               }
               return (

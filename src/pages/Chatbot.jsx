@@ -20,7 +20,7 @@ import {
 } from '../utils/caseMatching';
 import { exportCaseToPdf } from '../utils/casePdfExport';
 import { loadStoredJson, saveStoredJson } from '../utils/storage';
-import { cases as casesAPI, companyProfile as companyProfileAPI } from '../utils/api';
+import { cases as casesAPI, companyProfile as companyProfileAPI, fetchWebsite } from '../utils/api';
 
 const ROLE_OPTIONS = {
   frontend: 'Frontendutvikler',
@@ -239,9 +239,11 @@ function formatDate(dateString) {
   }).format(new Date(dateString));
 }
 
-function buildContextSection(form, classification, requirementAnalysis, companyProfile, mode) {
+function buildContextSection(form, classification, requirementAnalysis, companyProfile, mode, websiteContent = '') {
   const websiteGuidance = form.website
-    ? `Bedriften har oppgitt nettsiden ${form.website}. Bruk den som viktig selskapskontekst.`
+    ? websiteContent
+      ? `Bedriften har oppgitt nettsiden ${form.website}. Her er utdrag fra nettsiden som kontekst:\n\n${websiteContent}`
+      : `Bedriften har oppgitt nettsiden ${form.website}. Bruk den som viktig selskapskontekst.`
     : 'Bedriften har ikke oppgitt nettside. Hvis selskapsnavn og beskrivelse ikke er nok til å skrive et presis prosjekt, skal du be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.';
   const revisionSection =
     mode === 'revision'
@@ -255,15 +257,20 @@ ${form.revisionInstruction || 'Forbedre klarhet og presisjon uten a endre fakta.
       : '';
 
   return `
-Du er en norsk AI-assistent som hjelper en bedrift med å skrive et praksis- eller studentprosjekt.
+Du er en norsk AI-assistent som hjelper en bedrift med å skrive et praksis- eller studentprosjekt. Skriv profesjonelt men inviterende — unngå tungt bedriftsspråk og klisjeer. Vær konkret og presis.
 
 Hvis bedriften velger Usikker/annet på Hovedfokus, bruk informasjonen i de andre feltene for å finne det beste fokuset og klassifisere saken.
 
 Bedrift:
-- Navn: ${companyProfile?.name || form.logo || 'Ikke oppgitt'}
-- Logo: ${form.logo || 'Ikke oppgitt'}
-- Nettside: ${form.website || 'Ikke oppgitt'}
-- Hva bedriften gjør: ${form.companyQualifications}
+- Navn: ${companyProfile?.name || 'Ikke oppgitt'}
+- Nettside: ${form.website || companyProfile?.website || 'Ikke oppgitt'}
+- Bransje: ${companyProfile?.industry || 'Ikke oppgitt'}
+- Størrelse: ${companyProfile?.size || 'Ikke oppgitt'}
+- Lokasjon (bedrift): ${companyProfile?.location || 'Ikke oppgitt'}
+- Beskrivelse av hva bedriften gjør: ${form.companyQualifications || 'Ikke oppgitt'}
+- Kjernekompetanse: ${Array.isArray(companyProfile?.companyQualifications) && companyProfile.companyQualifications.length > 0 ? companyProfile.companyQualifications.join(', ') : 'Ikke oppgitt'}
+- Arbeidsområder: ${Array.isArray(companyProfile?.workAreas) && companyProfile.workAreas.length > 0 ? companyProfile.workAreas.join(', ') : 'Ikke oppgitt'}
+- Hvem de ser etter: ${Array.isArray(companyProfile?.hiringFocus) && companyProfile.hiringFocus.length > 0 ? companyProfile.hiringFocus.join(', ') : 'Ikke oppgitt'}
 
 Oppdrag:
 - Tittel/hovedfokus: ${form.title || form.taskFocus}
@@ -275,7 +282,7 @@ Oppdrag:
 - Krav (MÅ ha): ${form.requiredQualifications}
 - Ønskelig (FINT å ha): ${form.preferredQualifications || 'Ikke spesifisert'}
 - Personlige kvalifikasjoner: ${form.personalQualifications}
-- Lokasjon: ${form.location}
+- Lokasjon (oppdrag): ${form.location}
 - Startdato: ${formatDate(form.startDate)}
 - Sluttdato: ${formatDate(form.endDate)}
 - Start senest innen: ${form.startWithin}
@@ -290,9 +297,9 @@ Oppdrag:
 ${revisionSection}`.trim();
 }
 
-function buildMetadataPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
+function buildMetadataPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial', websiteContent = '') {
   return `
-${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode)}
+${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode, websiteContent)}
 
 Svar kun med gyldig JSON. Vær kort og presis — maksimalt 2-4 ord per listepunkt, maks 2 setninger i tekstfelt. Ikke finn opp fakta hvis informasjon mangler.
 
@@ -320,9 +327,9 @@ Svar kun med gyldig JSON. Vær kort og presis — maksimalt 2-4 ord per listepun
 `.trim();
 }
 
-function buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadata, mode = 'initial') {
+function buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadata, mode = 'initial', websiteContent = '') {
   return `
-${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode)}
+${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode, websiteContent)}
 
 Skriv et kortfattet studentprosjekt på norsk. Vær konsis — maks 2-3 setninger per del, korte kulepunkter. Ikke finn opp fakta hvis informasjon mangler.
 
@@ -341,55 +348,9 @@ Skriv kun ren Markdown-tekst, ingen JSON. Hvis nettside mangler og bedriftsinfor
 `.trim();
 }
 
-function buildPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial') {
-  const websiteGuidance = form.website
-    ? `Bedriften har oppgitt nettsiden ${form.website}. Bruk den som viktig selskapskontekst.`
-    : 'Bedriften har ikke oppgitt nettside. Hvis selskapsnavn og beskrivelse ikke er nok til å skrive et presis prosjekt, skal du be bedriften legge inn nettsidelenken i revisjonsinstruksjonsfeltet.';
-  const revisionSection =
-    mode === 'revision'
-      ? `
-Eksisterende utkast:
-${form.generatedAd}
-
-Du skal revidere utkastet over basert pa denne endringsbestillingen:
-${form.revisionInstruction || 'Forbedre klarhet og presisjon uten a endre fakta.'}
-`
-      : '';
-
+function buildPrompt(form, classification, requirementAnalysis, companyProfile, mode = 'initial', websiteContent = '') {
   return `
-Du er en norsk AI-assistent som hjelper en bedrift med å skrive et praksis- eller studentprosjekt.
-
-Hvis bedriften velger Usikker/annet på Hovedfokus, bruk informasjonen i de andre feltene for å finne det beste fokuset og klassifisere saken.
-
-Bedrift:
-- Navn: ${companyProfile?.name || form.logo || 'Ikke oppgitt'}
-- Logo: ${form.logo || 'Ikke oppgitt'}
-- Nettside: ${form.website || 'Ikke oppgitt'}
-- Hva bedriften gjør: ${form.companyQualifications}
-
-Oppdrag:
-- Tittel/hovedfokus: ${form.title || form.taskFocus}
-- Spesifikk oppdragskontekst: ${form.assignmentContext}
-- Tekniske begreper: ${form.technicalTerms}
-- Oppgavebeskrivelse: ${form.taskDescription}
-- Leveranser: ${form.deliveries}
-- Forventninger: ${form.expectations}
-- Krav (MÅ ha): ${form.requiredQualifications}
-- Ønskelig (FINT å ha): ${form.preferredQualifications || 'Ikke spesifisert'}
-- Personlige kvalifikasjoner: ${form.personalQualifications}
-- Lokasjon: ${form.location}
-- Startdato: ${formatDate(form.startDate)}
-- Sluttdato: ${formatDate(form.endDate)}
-- Start senest innen: ${form.startWithin}
-- Omfang: ${form.maxHours} timer
-- Sakstype vurdert av systemet: ${classification.type}
-- Relevante fag: ${classification.relevantSubjects.join(', ')}
-- Viktigste kvalifikasjon i kravbildet: ${requirementAnalysis.mostImportantQualification}
-- Kvalitetsdekning for forventninger: ${requirementAnalysis.expectationCoverage}%
-- Revisjonsinstruksjon: ${form.revisionInstruction || 'Ingen'}
-- Ekstra veiledning: ${websiteGuidance}
-
-${revisionSection}
+${buildContextSection(form, classification, requirementAnalysis, companyProfile, mode, websiteContent)}
 
 Svar kun med gyldig JSON i dette formatet:
 {
@@ -647,7 +608,7 @@ function validateForm(form) {
   return nextErrors;
 }
 
-async function generateAdWithAi(form, classification, requirementAnalysis, companyProfile, mode = 'initial', onMetadataReady, onMarkdownChunk) {
+async function generateAdWithAi(form, classification, requirementAnalysis, companyProfile, mode = 'initial', onMetadataReady, onMarkdownChunk, websiteContent = '') {
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
   // In production VITE_OLLAMA_HOST may not be set — fall back to the backend API URL
   // (the backend proxies /api/generate and /api/chat to the local Ollama instance)
@@ -658,13 +619,13 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
     ? new LLM({ service: 'ollama', model: 'gemma3-fast', baseUrl: ollamaHost })
     : new LLM({ service: 'google', apiKey: geminiApiKey, model: 'gemini-2.5-pro' });
 
-  const systemPrompt = 'Du skriver profesjonelle norske student- og praksisprosjekter basert på strukturerte data.';
+  const systemPrompt = 'Du skriver profesjonelle norske student- og praksisprosjekter basert på strukturerte data. Skriv profesjonelt men inviterende — unngå tungt bedriftsspråk og klisjeer. Vær konkret, presis og direkte. Ikke finn opp fakta som ikke er oppgitt.';
 
   // For revisions, keep the single-call path since context continuity matters
   if (mode === 'revision') {
     const llm = createLLM();
     llm.system(systemPrompt);
-    const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, companyProfile, mode), {
+    const response = await llm.chat(buildPrompt(form, classification, requirementAnalysis, companyProfile, mode, websiteContent), {
       max_tokens: 2048,
     });
     return normalizeGeneratedAdPayload(response, form, classification, requirementAnalysis);
@@ -674,8 +635,8 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
   const llm1 = createLLM();
   llm1.system(systemPrompt);
   const metadataResponse = await llm1.chat(
-    buildMetadataPrompt(form, classification, requirementAnalysis, companyProfile, mode),
-    { max_tokens: 500 }
+    buildMetadataPrompt(form, classification, requirementAnalysis, companyProfile, mode, websiteContent),
+    { max_tokens: 700 }
   );
 
   const metadataResult = normalizeGeneratedAdPayload(metadataResponse, form, classification, requirementAnalysis);
@@ -687,11 +648,11 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
   // Call 2: Markdown document (streaming directly via Ollama fetch API)
   let finalMarkdown = '';
   if (aiProvider === 'ollama') {
-    const prompt = `${systemPrompt}\n\n${buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadataResult.structured, mode)}`;
+    const prompt = `${systemPrompt}\n\n${buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadataResult.structured, mode, websiteContent)}`;
     const res = await fetch(`${ollamaHost}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gemma3-fast', prompt, stream: true, options: { num_predict: 900 } }),
+      body: JSON.stringify({ model: 'gemma3-fast', prompt, stream: true, options: { num_predict: 1400 } }),
     });
 
     const reader = res.body.getReader();
@@ -716,8 +677,8 @@ async function generateAdWithAi(form, classification, requirementAnalysis, compa
     const llm2 = createLLM();
     llm2.system(systemPrompt);
     const markdownResponse = await llm2.chat(
-      buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadataResult.structured, mode),
-      { max_tokens: 700 }
+      buildMarkdownPrompt(form, classification, requirementAnalysis, companyProfile, metadataResult.structured, mode, websiteContent),
+      { max_tokens: 1400 }
     );
     finalMarkdown = typeof markdownResponse === 'string'
       ? markdownResponse.trim()
@@ -754,6 +715,8 @@ export default function Chatbot({ userRole }) {
   const [helpMessage, setHelpMessage] = useState('');
   const [sendingHelp, setSendingHelp] = useState(false);
   const [isEditingGeneratedAd, setIsEditingGeneratedAd] = useState(false);
+  const [websiteContent, setWebsiteContent] = useState('');
+  const [fetchingWebsite, setFetchingWebsite] = useState(false);
   const hasGeneratedDraft = Boolean(form.generatedAd);
 
   // Load data from API on mount
@@ -804,6 +767,16 @@ export default function Chatbot({ userRole }) {
       handleLoadPublishedCase(location.state.caseToEdit);
     }
   }, [initializing]);
+
+  useEffect(() => {
+    const url = companyProfile?.website;
+    if (!url) return;
+    setFetchingWebsite(true);
+    fetchWebsite(url)
+      .then((data) => setWebsiteContent(data.text || ''))
+      .catch(() => setWebsiteContent(''))
+      .finally(() => setFetchingWebsite(false));
+  }, [companyProfile?.website]);
 
   const preparedForm = useMemo(() => prepareCaseForm(form, companyProfile), [form, companyProfile]);
   const classification = useMemo(() => classifyCase(preparedForm), [preparedForm]);
@@ -1160,7 +1133,8 @@ export default function Chatbot({ userRole }) {
         },
         (accumulatedMarkdown) => {
           setForm((prev) => ({ ...prev, generatedAd: accumulatedMarkdown }));
-        }
+        },
+        websiteContent
       );
       persistGeneratedDraft(
         result.markdown,
@@ -1195,7 +1169,7 @@ export default function Chatbot({ userRole }) {
     setStatusMessage('AI oppdaterer utkastet med de valgte endringene.');
 
     try {
-      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, companyProfile, 'revision');
+      const result = await generateAdWithAi(preparedForm, classification, requirementAnalysis, companyProfile, 'revision', null, null, websiteContent);
       persistGeneratedDraft(
         result.markdown,
         result.structured,
@@ -1574,7 +1548,11 @@ export default function Chatbot({ userRole }) {
                 />
                 <p className="muted case-panel-top-copy">
                   {preparedForm.website
-                    ? 'Denne lenken sendes automatisk til AI-en når første utkast genereres.'
+                    ? fetchingWebsite
+                      ? 'Henter innhold fra nettsiden...'
+                      : websiteContent
+                        ? `Nettside lest (${websiteContent.length} tegn). Innholdet sendes automatisk til AI-en.`
+                        : 'Nettsiden kunne ikke leses. AI-en bruker kun URL-en som kontekst.'
                     : 'Ingen nettside er lagret i bedriftsprofilen. Hvis AI-en mangler selskapskontekst, vil den be dere lime inn nettsidelenken i revisjonsinstruksjonsfeltet.'}
                 </p>
               </div>
