@@ -96,6 +96,53 @@ export async function sendNotificationEmail({ to, studentName, caseTitle, compan
 }
 
 /**
+ * Send a welcome email to a company lead that opted in to be contacted.
+ *
+ * @param {{ to: string, firstName: string, companyName: string }} opts
+ */
+export async function sendWelcomeEmail({ to, firstName, companyName }) {
+  const transport = getTransporter();
+  if (!transport) return;
+
+  const from = getSafeFromAddress();
+
+  const html = `
+  <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+    <h2 style="color:#347e84;margin-top:0;">Velkommen til Praksisportal!</h2>
+    <p style="color:#374151;">Hei ${firstName},</p>
+    <p style="color:#374151;">
+      Tusen takk for at <strong>${companyName}</strong> meldte sin interesse i Praksisportal.
+      Vi setter stor pris på at dere tok dere tid til å registrere dere, og vi er glade for å ha dere med.
+    </p>
+    <p style="color:#374151;">
+      Vi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling.
+      Hold øye med innboksen din – vi gleder oss til å ta kontakt!
+    </p>
+    <p style="color:#374151;margin-top:32px;">
+      Med vennlig hilsen,<br/>
+      <strong>Praksisportal-teamet</strong>
+    </p>
+    <p style="color:#9ca3af;font-size:0.8rem;margin-top:32px;border-top:1px solid #e5e7eb;padding-top:16px;">
+      Du mottar denne e-posten fordi ${companyName} registrerte seg via Praksisportal.
+    </p>
+  </div>`;
+
+  const text = `Hei ${firstName},\n\nTusen takk for at ${companyName} meldte sin interesse i Praksisportal.\n\nVi setter stor pris på at dere tok dere tid til å registrere dere. Vi jobber med å ferdigstille plattformen, og du vil høre fra oss så snart vi er klare for full utrulling.\n\nMed vennlig hilsen,\nPraksisportal-teamet`;
+
+  try {
+    await transport.sendMail({
+      from,
+      to,
+      subject: 'Velkommen til Praksisportal!',
+      text,
+      html,
+    });
+  } catch (err) {
+    console.error('[mailer] Failed to send welcome email:', err.message);
+  }
+}
+
+/**
  * Send a help/contact email from company publication flow to support recipients.
  *
  * @param {{ fromBusinessEmail: string, companyName: string, message: string, to?: string[] }} opts

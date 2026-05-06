@@ -7,6 +7,7 @@ import casesRoutes from "./routes/cases.js";
 import notificationRoutes from "./routes/notifications.js";
 import chatRoutes from "./routes/chat.js";
 import fetchWebsiteRoutes from "./routes/fetchWebsite.js";
+import leadsRoutes from "./routes/leads.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use("/api/cases", casesRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/fetch-website", fetchWebsiteRoutes);
+app.use("/api/leads", leadsRoutes);
 
 // Dedicated Ollama generate proxy — used by the frontend in production
 // (VITE_OLLAMA_HOST points to this backend; frontend calls ${ollamaHost}/api/generate)

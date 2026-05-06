@@ -11,6 +11,7 @@ const StudentProfile = lazy(() => import('./pages/StudentProfile'));
 const CompanyProfilePublic = lazy(() => import('./pages/CompanyProfilePublic'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
+const CompanyRegister = lazy(() => import('./pages/CompanyRegister'));
 import { auth, token as tokenUtils } from './utils/api';
 import { NotificationProvider } from './contexts/NotificationContext';
 
@@ -73,6 +74,7 @@ function App() {
           <Suspense fallback={<Spinner />}>
           <Routes>
             <Route path="/" element={<Home userRole={userRole} setUserRole={setUserRole} />} />
+            <Route path="/register" element={<CompanyRegister />} />
             <Route path="/login" element={userRole ? <Navigate to="/" /> : <Login />} />
             <Route path="/signup" element={userRole ? <Navigate to="/" /> : <Signup />} />
             <Route path="/internships" element={<Internships userRole={userRole} />} />

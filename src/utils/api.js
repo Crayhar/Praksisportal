@@ -156,3 +156,12 @@ export const notifications = {
 
 export const fetchWebsite = (url) =>
   apiFetch("/api/fetch-website", { method: "POST", body: JSON.stringify({ url }) });
+
+// Company lead registration (QR code flow)
+export const leads = {
+  register: (data) =>
+    apiFetch("/api/leads/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
